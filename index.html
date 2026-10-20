@@ -303,13 +303,18 @@ button { font-family: inherit; }
 /* Kayıt ve oyuncular */
 .page-title { font: 400 1.75rem/1.1 var(--font-display); margin: 8px 0; text-wrap: balance; }
 .lead { color: var(--ink-2); margin-bottom: 20px; }
-.form { display: grid; gap: 16px; margin-bottom: 18px; }
-.form .row { display: grid; gap: 6px; }
+.form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 18px; }
+.form .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .form label { font-weight: 600; }
 .form input {
   width: 100%; font: 400 1rem/1.3 var(--font-body); color: var(--ink); min-height: 50px;
   background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px;
 }
+.form input[type="date"] {
+  -webkit-appearance: none; appearance: none;
+  display: block; min-width: 0; max-width: 100%; text-align: left;
+}
+.form input[type="date"]::-webkit-date-and-time-value { text-align: left; min-width: 0; }
 .form input:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; border-color: var(--action); }
 .form input[aria-invalid="true"] { border-color: var(--bad); }
 .hint { color: var(--ink-2); font-size: 0.875rem; }
@@ -458,13 +463,6 @@ p.keep { margin: 0 0 18px; }
         <input id="regYer" name="yer" type="text" autocomplete="off" autocapitalize="words" maxlength="60">
         <span class="hint">Şehir, okul, kurum ya da etkinlik adı.</span>
       </div>
-      <div class="row" id="consentRow" hidden>
-        <label class="check" for="regConsent">
-          <input id="regConsent" name="consent" type="checkbox">
-          <span>Bilgilerimin (ad, soyad, doğum tarihi, katıldığım yer) uygulamanın sahibine iletilmesini kabul ediyorum.</span>
-        </label>
-        <span class="hint">18 yaşından küçüksen ailenin bilgisi olsun.</span>
-      </div>
       <p class="form-err" id="regErr" role="alert" hidden></p>
       <div class="stack">
         <button class="btn" id="regSave" type="submit">Kaydı oluştur ve başla</button>
@@ -488,7 +486,7 @@ p.keep { margin: 0 0 18px; }
 
   <section id="send" hidden>
     <h2 class="page-title">Son adım</h2>
-    <p class="lead">Kaydını uygulamanın sahibine göndermek için aşağıdaki düğmeye bas. Bilgilerin dolu hâlde bir form açılır, formda <strong>Gönder</strong>'e basman yeterli.</p>
+    <p class="lead">Kaydını uygulamanın sahibine göndermek için aşağıdaki düğmeye bas. Bilgilerin dolu hâlde bir form açılır, formda <strong>Gönder</strong>'e basman yeterli. 18 yaşından küçüksen ailenin bilgisi olsun.</p>
     <div class="stack">
       <a class="btn" id="sendLink" href="#" target="_blank" rel="noopener noreferrer">Kaydı gönder</a>
       <button class="btn ghost" id="sendDone" type="button">Gönderdim, devam et</button>
@@ -1105,7 +1103,7 @@ const VERSES = [
 
   function showRegErr(err) {
     var box = $("regErr");
-    REG_FIELDS.concat(["regConsent"]).forEach(function (id) { $(id).setAttribute("aria-invalid", "false"); });
+    REG_FIELDS.forEach(function (id) { $(id).setAttribute("aria-invalid", "false"); });
     if (!err) { box.hidden = true; box.textContent = ""; return; }
     box.textContent = err.msg;
     box.hidden = false;
@@ -1116,8 +1114,6 @@ const VERSES = [
     REG_FIELDS.forEach(function (id) { $(id).value = ""; });
     $("regDogum").setAttribute("max", todayStr());
     showRegErr(null);
-    $("regConsent").checked = false;
-    $("consentRow").hidden = !sendOn();
     $("privacyNote").textContent = sendOn()
       ? "Bilgilerin bu cihazda saklanır ve gönderirsen uygulamanın sahibine ulaşır. Yalnızca sahibi görür. Cihazındaki kaydı istediğin zaman silebilirsin."
       : "Bilgilerin yalnızca bu cihazda, bu tarayıcıda saklanır. Kimseye gönderilmez, uygulamanın sahibi de göremez. İstediğin zaman silebilirsin.";
@@ -1133,7 +1129,6 @@ const VERSES = [
     var f = { ad: clean($("regAd").value), soyad: clean($("regSoyad").value),
       dogum: clean($("regDogum").value), yer: clean($("regYer").value) };
     var err = profileError(f);
-    if (!err && sendOn() && !$("regConsent").checked) err = { field: "regConsent", msg: "Devam etmek için onay kutusunu işaretle." };
     showRegErr(err);
     if (err) { try { $(err.field).focus(); } catch (x) {} return; }
     var key = (f.ad + "|" + f.soyad + "|" + f.dogum).toLocaleLowerCase("tr");
