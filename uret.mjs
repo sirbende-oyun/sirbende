@@ -18,6 +18,7 @@ const LEVELS = ["kolay", "orta", "orta", "zor"];
 
 const API = process.env.MODELS_URL || "https://models.github.ai/inference/chat/completions";
 const CATALOG = process.env.MODELS_CATALOG || "https://models.github.ai/catalog/models";
+const ALT_API = process.env.MODELS_ALT_URL || "https://models.inference.ai.azure.com/chat/completions";
 const TOKEN = process.env.GITHUB_TOKEN || "";
 const FILE = process.env.OUT_FILE || "sorular.json";
 const list = (s) => String(s).split(",").map((x) => x.trim()).filter(Boolean);
@@ -106,7 +107,7 @@ async function post(body) {
       const kind = /rate|limit|quota/.test(code) ? "rate" : /unauthor|forbidden|no_access|permission/.test(code) ? "auth" : /model|not_found|unknown/.test(code) ? "model" : "other";
       throw new ApiError(kind, res.status, "hata gövdesi: " + brief(text));
     }
-    if (!out.text) throw new ApiError("other", res.status, "beklenmeyen yanıt: " + brief(text));
+    if (!out.text) throw new ApiError("other", res.status, "beklenmeyen yanıt [" + (res.headers.get("content-type") || "-") + (res.redirected ? ", yönlendirildi: " + res.url : "") + "]: `" + brief(text).replace(/`/g, "'") + "`");
     return out.text;
   }
   const brief_ = brief(text);
@@ -352,7 +353,40 @@ async function main() {
   finish(0);
 }
 
-main().catch((e) => {
+// Tanı: yanıt 200 ama içi beklenmedikse, birkaç sade bağlantı denemesi yapıp sonucu özete yazar.
+async function probeOne(label, url, headers, body, method) {
+  let line;
+  try {
+    const r = await fetch(url, {
+      method: method || "POST",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      redirect: "manual",
+      signal: AbortSignal.timeout(25000)
+    });
+    const t = await r.text();
+    const loc = r.headers.get("location");
+    line = label + " → " + r.status + " " + (r.headers.get("content-type") || "-") + (loc ? " | yönlendirme: " + loc.slice(0, 90) : "") + " | " + brief(t).slice(0, 170);
+  } catch (e) {
+    line = label + " → ağ hatası: " + (e && e.message);
+  }
+  say("`" + line.replace(/`/g, "'") + "`");
+}
+async function probe() {
+  say("**Tanı: bağlantı denemeleri**");
+  const msg = [{ role: "user", content: "Sadece şunu yaz: merhaba" }];
+  const base = { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" };
+  const ext = { ...base, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  await probeOne("A sade başlık", API, base, { model: "openai/gpt-4.1-mini", messages: msg, max_tokens: 20 });
+  await probeOne("B GitHub başlıkları", API, ext, { model: "openai/gpt-4.1-mini", messages: msg, max_tokens: 20 });
+  await probeOne("C eski adres", ALT_API, base, { model: "gpt-4o-mini", messages: msg, max_tokens: 20 });
+  await probeOne("D katalog", CATALOG, ext, null, "GET");
+}
+
+main().catch(async (e) => {
+  if (e instanceof ApiError && e.kind === "other" && e.status === 200 && !process.env.NO_PROBE) {
+    try { await probe(); } catch (x) {}
+  }
   if (e instanceof ApiError && e.kind === "auth") {
     say("HATA (" + e.status + "): GitHub Models izni yok. İş akışında \"models: read\" izni olmalı ve hesabınızda GitHub Models açık olmalı. Ayrıntı: " + e.message);
     finish(1);
