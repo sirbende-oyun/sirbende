@@ -369,6 +369,7 @@ button { font-family: inherit; }
 .avatar .ph { width: 52%; height: 52%; }
 .avatar.has .ph { display: none; }
 .me { flex-wrap: wrap; row-gap: 10px; }
+.me-btns { display: flex; gap: 8px; flex: none; }
 .me-id { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 12rem; }
 #plMsg { margin: 0 0 14px; }
 .p-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -399,7 +400,11 @@ a.btn { text-align: center; text-decoration: none; }
 .challenge-result { margin: 4px 0 14px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-weight: 600; }
 .invite-status { margin-top: 6px; color: var(--ink-2); font-size: 0.875rem; }
 .invite-status:empty { display: none; }
-#inviteHome, #remindBtn { margin-top: 14px; }
+#inviteHome, #remindBtn, #installBtn { margin-top: 14px; }
+.install-help { margin: 12px 0 0; padding: 16px; border-radius: 12px; background: var(--surface-2); }
+.install-title { font-weight: 600; }
+.install-help ol { margin: 8px 0 14px 22px; padding: 0; }
+.install-help li { margin: 8px 0; }
 .restore { margin: 0 0 18px; padding: 12px 14px; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; }
 .restore summary { font-weight: 600; cursor: pointer; }
 .restore .form { margin: 14px 0 0; }
@@ -470,7 +475,10 @@ a.btn { text-align: center; text-decoration: none; }
           <span class="me-info" id="meInfo"></span>
         </div>
       </div>
-      <button class="btn ghost small" id="switch" type="button">Değiştir</button>
+      <div class="me-btns">
+        <button class="btn ghost small" id="editMe" type="button">Düzenle</button>
+        <button class="btn ghost small" id="switch" type="button">Değiştir</button>
+      </div>
     </div>
     <div class="pending" id="pending" hidden>
       <span>Kaydın henüz uygulamanın sahibine gönderilmedi.</span>
@@ -510,11 +518,17 @@ a.btn { text-align: center; text-decoration: none; }
     <p class="invite-status" id="inviteStatus" aria-live="polite"></p>
     <button class="btn ghost" id="remindBtn" type="button" hidden>Günlük hatırlatma: Kapalı</button>
     <p class="invite-status" id="remindStatus" aria-live="polite"></p>
+    <button class="btn ghost" id="installBtn" type="button" hidden>Telefona ekle</button>
+    <div class="install-help" id="installHelp" hidden>
+      <p class="install-title" id="installTitle"></p>
+      <ol id="installSteps"></ol>
+      <button class="btn small" id="installClose" type="button">Tamam</button>
+    </div>
   </section>
 
   <section id="register" hidden>
-    <h2 class="page-title">Kaydını oluştur</h2>
-    <p class="lead">Oyuna başlamadan önce kendine özel bir kayıt aç. Puanların ve rekorun bu kayıtla tutulur.</p>
+    <h2 class="page-title" id="regTitle">Kaydını oluştur</h2>
+    <p class="lead" id="regLead">Oyuna başlamadan önce kendine özel bir kayıt aç. Puanların ve rekorun bu kayıtla tutulur.</p>
     <form class="form" id="regForm" novalidate>
       <div class="row photo-row">
         <span class="field-lbl" id="photoLbl">Profil resmi</span>
@@ -1392,6 +1406,7 @@ const QUESTIONS = [
   var me = null;
   var pendingDel = null;
   var regBack = "";
+  var regEditId = "";
   var regPhoto = "";
   var photoTarget = "";
   var photoJob = 0;
@@ -1905,6 +1920,50 @@ const QUESTIONS = [
     box.hidden = false;
     if (err.field) $(err.field).setAttribute("aria-invalid", "true");
   }
+  var REG_LEAD = "Oyuna başlamadan önce kendine özel bir kayıt aç. Puanların ve rekorun bu kayıtla tutulur.";
+  /* Kayıtlı yer metnini ("Çiğdem Mah., Çankaya, Ankara") il, ilçe ve mahalle seçimlerine geri çevirir. Eski serbest yazılmış yerler çevrilemez. */
+  function setPlaceFromYer(yer) {
+    var il = null, ilce = null, mah = null;
+    yerData().il.forEach(function (a) {
+      var sfx = ", " + a[0];
+      if (il || yer.length <= sfx.length || yer.slice(-sfx.length) !== sfx) return;
+      var rest = yer.slice(0, yer.length - sfx.length);
+      a[1].forEach(function (d) {
+        var sfx2 = ", " + d[0];
+        if (ilce || rest.length <= sfx2.length || rest.slice(-sfx2.length) !== sfx2) return;
+        var label = rest.slice(0, rest.length - sfx2.length);
+        (d[1] ? d[1].split("|") : []).forEach(function (m) { if (!mah && mahLabel(m) === label) mah = m; });
+        if (mah) { il = a[0]; ilce = d[0]; }
+      });
+    });
+    if (!il || !ilce || !mah) return false;
+    $("regIl").value = il; onIl();
+    $("regIlce").value = ilce; onIlce();
+    $("regMah").value = mah;
+    return true;
+  }
+  var editPlaceParsed = false;
+  function openEdit(id, back) {
+    var p = findProfile(id);
+    if (!p) return;
+    openRegister(back || "");
+    regEditId = id;
+    $("regTitle").textContent = "Profilini düzenle";
+    $("regLead").textContent = "Bilgilerini değiştir ve Kaydet'e bas. Puanların, rekorun ve oyun sayın değişmez.";
+    $("regSave").textContent = "Kaydet";
+    $("restoreBox").hidden = true;
+    $("regCancel").hidden = false;
+    $("regAd").value = p.ad;
+    $("regSoyad").value = p.soyad;
+    $("regDogum").value = p.dogum;
+    editPlaceParsed = setPlaceFromYer(p.yer);
+    regPhoto = p.foto || "";
+    renderRegPhoto();
+    setPhotoMsg(editPlaceParsed ? "" : "Kayıtlı yerin listede yok, istersen yeniden seçebilirsin. Seçmezsen eskisi kalır.", false);
+    $("privacyNote").textContent = syncOn()
+      ? "Değişiklikler önce bu cihazdaki kaydına işlenir. Ana sayfada Tamam'a bastıysan, sonraki oyunlarında yeni bilgilerin yapımcı tarafından kaydedilir. Daha önce gönderilmiş satırlar değişmez."
+      : "Değişiklikler yalnızca bu cihazdaki kaydına işlenir.";
+  }
   function openRegister(back) {
     regBack = back || "";
     REG_FIELDS.forEach(function (id) { $(id).value = ""; });
@@ -1917,6 +1976,11 @@ const QUESTIONS = [
       : sendOn()
       ? "Bilgilerin bu cihazda saklanır ve gönderirsen uygulamanın sahibine ulaşır. Yalnızca sahibi görür. Cihazındaki kaydı istediğin zaman silebilirsin."
       : "Bilgilerin yalnızca bu cihazda, bu tarayıcıda saklanır. Kimseye gönderilmez, uygulamanın sahibi de göremez. İstediğin zaman silebilirsin.";
+    regEditId = "";
+    $("regTitle").textContent = "Kaydını oluştur";
+    $("regLead").textContent = REG_LEAD;
+    $("regSave").textContent = "Kaydı oluştur ve başla";
+    $("restoreBox").hidden = false;
     $("regCancel").hidden = !profiles.length;
     $("restoreCode").value = "";
     $("restoreErr").hidden = true;
@@ -1928,10 +1992,15 @@ const QUESTIONS = [
     var il = $("regIl").value, ilce = $("regIlce").value, mah = $("regMah").value;
     var f = { ad: clean($("regAd").value), soyad: clean($("regSoyad").value),
       dogum: clean($("regDogum").value), il: il, ilce: ilce, mah: mah, yer: placeFrom(il, ilce, mah) };
+    var editing = regEditId ? findProfile(regEditId) : null;
+    if (regEditId && !editing) { regEditId = ""; enterApp(); return; }
+    /* düzenlerken yer hiç seçilmediyse ve eski yer listeden çevrilemiyorsa (serbest yazılmış), eski yer korunur */
+    if (editing && !editPlaceParsed && !il && !ilce && !mah) { f = { ad: f.ad, soyad: f.soyad, dogum: f.dogum, yer: editing.yer }; }
     var err = profileError(f);
     showRegErr(err);
     if (err) { try { $(err.field).focus(); } catch (x) {} return; }
     var key = (f.ad + "|" + f.soyad + "|" + f.dogum).toLocaleLowerCase("tr");
+    if (editing) { saveEdit(editing, f, key); return; }
     var same = null;
     profiles.forEach(function (p) {
       if ((p.ad + "|" + p.soyad + "|" + p.dogum).toLocaleLowerCase("tr") === key) same = p;
@@ -1962,12 +2031,38 @@ const QUESTIONS = [
     renderHome();
     show("home");
   }
+  function saveEdit(p, f, key) {
+    var dup = false;
+    profiles.forEach(function (q) {
+      if (q.id !== p.id && (q.ad + "|" + q.soyad + "|" + q.dogum).toLocaleLowerCase("tr") === key) dup = true;
+    });
+    if (dup) { showRegErr({ field: "regAd", msg: "Bu cihazda aynı ad, soyad ve doğum tarihli başka bir kayıt var." }); return; }
+    var old = { ad: p.ad, soyad: p.soyad, dogum: p.dogum, yer: p.yer, foto: p.foto || "", sent: p.sent };
+    var changed = f.ad !== p.ad || f.soyad !== p.soyad || f.dogum !== p.dogum || f.yer !== p.yer;
+    p.ad = f.ad; p.soyad = f.soyad; p.dogum = f.dogum; p.yer = f.yer; p.foto = regPhoto;
+    if (changed) p.sent = false; /* bilgi değiştiyse (Tally akışında) yeniden gönderilsin */
+    if (!saveChecked(p, regPhoto, function () { p.ad = old.ad; p.soyad = old.soyad; p.dogum = old.dogum; p.yer = old.yer; p.foto = old.foto; p.sent = old.sent; })) {
+      regPhoto = old.foto;
+      renderRegPhoto();
+      setPhotoMsg("Resim cihazda yer bulamadı, değişiklikler kaydedilmedi. Başka bir resim seç ya da resmi kaldırıp tekrar dene.", true);
+      return;
+    }
+    afterSave();
+    var back = regBack;
+    regEditId = "";
+    REG_FIELDS.forEach(function (id) { $(id).value = ""; });
+    clearRegPhoto();
+    plNote = { text: "Profil güncellendi.", bad: false };
+    if (back === "players") { renderPlayers(); show("players"); }
+    else { plNote = null; renderHome(); show("home"); }
+  }
   function photoNoRoom() {
     regPhoto = "";
     renderRegPhoto();
     setPhotoMsg("Resim cihazda yer bulamadı, kaydın oluşturulmadı. Başka bir resim seç ya da resimsiz tekrar dene.", true);
   }
   function cancelRegister() {
+    regEditId = "";
     if (regBack === "players") { renderPlayers(); show("players"); }
     else enterApp();
   }
@@ -2004,6 +2099,7 @@ const QUESTIONS = [
       } else {
         if (me && me.id === p.id) act.appendChild(span("p-on", "Aktif oyuncu"));
         else act.appendChild(pbtn("Bu ben", "pick", p.id, ""));
+        act.appendChild(pbtn("Düzenle", "edit", p.id, "ghost"));
         act.appendChild(pbtn(p.foto ? "Resmi değiştir" : "Resim ekle", "photo", p.id, "ghost"));
         if (p.foto) act.appendChild(pbtn("Resmi kaldır", "photo-del", p.id, "ghost"));
         act.appendChild(pbtn("Kayıt kodu", "code", p.id, "ghost"));
@@ -2039,7 +2135,8 @@ const QUESTIONS = [
       var chosen = null;
       profiles.forEach(function (p) { if (p.id === id) chosen = p; });
       if (chosen) { pendingDel = null; setActive(chosen); renderHome(); show("home"); }
-    } else if (act === "code") { showCode(id); }
+    } else if (act === "edit") { pendingDel = null; openEdit(id, "players"); }
+    else if (act === "code") { showCode(id); }
     else if (act === "photo") {
       photoTarget = id;
       try { $("plFile").value = ""; $("plFile").click(); } catch (x) {}
@@ -2175,6 +2272,7 @@ const QUESTIONS = [
     $("noticeBox").hidden = !(me && needsNotice(me));
     renderChallenge();
     renderRemind();
+    renderInstall();
     syncFlush();
     var best = myBest();
     var b = $("best");
@@ -3409,6 +3507,81 @@ const QUESTIONS = [
     }).then(null, fail);
   }
 
+  /* == TELEFONA EKLE ==
+     Yalnızca sitenin kendi adresinde (sirbende-oyun.github.io), telefonda ve henüz ana ekrana eklenmemişse görünür.
+     Artifact'ta, uygulamada (Capacitor) ve bilgisayarda görünmez. */
+  var INSTALL_HOST = /(^|\.)sirbende-oyun\.github\.io$/;
+  var installEvt = null, installed = false;
+  function installKind() {
+    try {
+      if (installed) return null;
+      if (typeof location === "undefined" || !INSTALL_HOST.test(String(location.hostname || ""))) return null;
+      var standalone = false;
+      try { standalone = !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; } catch (e) {}
+      if (standalone) return null;
+      var u = String(navigator.userAgent || "");
+      var ios = /iPhone|iPad|iPod/.test(u) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      if (ios) return /FBAN|FBAV|Instagram|WhatsApp|Line\/|Snapchat|Twitter|TikTok|musical_ly|GSA\//.test(u) ? "ios-app" : "ios";
+      if (/Android/.test(u)) return installEvt ? "android-prompt" : "android";
+      return null;
+    } catch (e) { return null; }
+  }
+  var INSTALL_HELP = {
+    "ios": ["iPhone'a böyle eklenir:", [
+      "Safari'nin altındaki Paylaş simgesine dokun (kare ve yukarı ok). Görünmüyorsa üç noktalı menünün içindedir.",
+      "Listeyi yukarı kaydır ve Ana Ekrana Ekle'ye dokun.",
+      "Sağ üstteki Ekle'ye dokun. Sır Bende simgesi ana ekranında olur."
+    ]],
+    "ios-app": ["Bu sayfayı başka bir uygulama açtı. iPhone'a eklemek için önce Safari'de aç:", [
+      "Sayfanın köşesindeki üç nokta ya da Paylaş simgesine dokun.",
+      "Safari'de Aç'a dokun.",
+      "Safari'de açılınca burada Telefona ekle'ye yeniden dokun."
+    ]],
+    "android": ["Android'e böyle eklenir:", [
+      "Tarayıcının sağ üstündeki üç nokta menüsüne dokun.",
+      "Uygulamayı yükle ya da Ana ekrana ekle'ye dokun.",
+      "Yükle'ye dokun. Sır Bende simgesi ana ekranında olur."
+    ]]
+  };
+  function renderInstall() {
+    var k = installKind();
+    $("installBtn").hidden = !k;
+    if (!k) $("installHelp").hidden = true;
+  }
+  function onInstall() {
+    var k = installKind();
+    if (!k) return;
+    if (k === "android-prompt" && installEvt) {
+      var ev = installEvt;
+      installEvt = null;
+      $("installHelp").hidden = true;
+      try {
+        var r = ev.prompt();
+        if (r && typeof r.catch === "function") r.catch(function () {});
+      } catch (e) {}
+      renderInstall();
+      return;
+    }
+    var h = INSTALL_HELP[k === "android-prompt" ? "android" : k];
+    $("installTitle").textContent = h[0];
+    var ol = $("installSteps");
+    ol.textContent = "";
+    h[1].forEach(function (t) {
+      var li = document.createElement("li");
+      li.textContent = t;
+      ol.appendChild(li);
+    });
+    $("installHelp").hidden = false;
+  }
+  try {
+    window.addEventListener("beforeinstallprompt", function (e) {
+      try { e.preventDefault(); } catch (x) {}
+      installEvt = e;
+      renderInstall();
+    });
+    window.addEventListener("appinstalled", function () { installed = true; installEvt = null; renderInstall(); });
+  } catch (e) {}
+
   /* Olaylar */
   $("cover").addEventListener("click", openCover);
   $("musicHome").addEventListener("click", musicToggle);
@@ -3444,6 +3617,7 @@ const QUESTIONS = [
     syncQueue(me, null);
     renderHome();
   });
+  $("editMe").addEventListener("click", function () { if (me) openEdit(me.id, ""); });
   $("switch").addEventListener("click", function () { pendingDel = null; renderPlayers(); show("players"); });
   $("addPlayer").addEventListener("click", function () { openRegister("players"); });
   $("playersBack").addEventListener("click", enterApp);
@@ -3459,6 +3633,8 @@ const QUESTIONS = [
   $("menu").addEventListener("click", toMenu);
   $("copy").addEventListener("click", copyShare);
   $("remindBtn").addEventListener("click", toggleRemind);
+  $("installBtn").addEventListener("click", onInstall);
+  $("installClose").addEventListener("click", function () { $("installHelp").hidden = true; });
   $("challengeBtn").addEventListener("click", function () {
     var c = invitePartsFor(endScore, false);
     doShare(c.text, c.url, $("copyStatus"));
