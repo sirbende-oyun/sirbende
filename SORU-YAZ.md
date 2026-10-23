@@ -16,6 +16,8 @@ arka planda okuyup soru havuzuna katar.
    - `a` doğru şıkkın sırası (0-3). Şıkları karıştırmakla uğraşma, araç eklerken karıştırır.
 3. `node birlestir.mjs yeni.json` çalıştır. Araç kural dışı ve tekrar soruları `RED` satırlarıyla bildirir.
    Reddedilenleri düzelt ya da at. Eklenen sayısı 30'dan azsa yeni sorular yazıp tekrarla (en fazla 3 tur).
+   **Birleştirmeden önce son kontrol:** `yeni.json` içindeki her soruyu tek tek yeniden oku. Doğru şıkkı ve soru metnindeki
+   her iddiayı (sıfatlar, tarihler, yer adları dahil) ayrı ayrı doğrula. İkinci kez şüphe duyduğun soruyu at.
 4. `git add sorular.json`, `git commit -m "Yeni sorular (N)"`, `git push origin main`.
    Başka hiçbir dosyayı değiştirme. `yeni.json` dosyasını sil.
 5. Sonunda tek satır rapor ver: kaç soru eklendi, dosyada toplam kaç soru var.
@@ -24,6 +26,8 @@ arka planda okuyup soru havuzuna katar.
 
 - Yalnızca **kesin ve doğrulanabilir** bilgileri sor. Emin olmadığın bir soruyu yazma. Şüphen varsa WebSearch ile
   doğrula ya da soruyu at. Az ama doğru soru, çok ama şüpheli sorudan iyidir.
+- Soru metnindeki her ek bilgi de doğru olmalı: süsleyici sıfatlar ("pembe renkli göl" gibi) ve tanımlar yanlış olursa soru bozulur. Gerekmiyorsa ekleme.
+- Uyruk, vatandaşlık, "ilk" ve "en" iddialarında kaynaklar ayrışıyorsa sorma (örn. doğduğu ülke ile vatandaşlığı farklı olan kişiler). Doğum yeri gibi kesin ölçüt kullan.
 - Tek bir doğru cevap olsun. Tartışmalı, yoruma açık ya da "en iyi/en güzel" türü sorular yazma.
 - Zamanla değişen bilgileri sorma: güncel rekorlar, görevdeki kişiler, son turnuva sonuçları, nüfus sıralaması, "şu an".
 - Yanlış şıklar makul olsun ve doğru cevapla aynı türden olsun (yıl için yıl, kişi için kişi). "Hepsi", "Hiçbiri", "A ve B" gibi şık yazma.

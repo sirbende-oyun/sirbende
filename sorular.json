@@ -1,4 +1,4 @@
-{"v":1,"u":"2026-10-23T00:04:37Z","items":[
+{"v":1,"u":"2026-10-23T00:05:30Z","items":[
 {"k":0,"q":"Osmanlı Devleti’nin kurucusu kabul edilen kişi kimdir?","o":["I. Murad","Ertuğrul Gazi","Osman Gazi","Orhan Gazi"],"a":2},
 {"k":0,"q":"İstanbul’un fethinde Osmanlı ordusunun başında hangi padişah bulunuyordu?","o":["Yavuz Sultan Selim","I. Murad","II. Mehmet","Kanuni Sultan Süleyman"],"a":2},
 {"k":0,"q":"Türkiye Büyük Millet Meclisi hangi tarihte açılmıştır?","o":["29 Ekim 1923","19 Mayıs 1919","23 Nisan 1920","30 Ağustos 1922"],"a":2},
@@ -54,7 +54,7 @@
 {"k":1,"q":"Süveyş Kanalı hangi iki denizi birbirine bağlar?","o":["Karadeniz ve Hazar","Kızıldeniz ve Umman","Akdeniz ve Kızıldeniz","Ege ve Adriyatik"],"a":2},
 {"k":1,"q":"İsviçre’nin başkenti neresidir?","o":["Cenevre","Bern","Basel","Zürih"],"a":1},
 {"k":1,"q":"Yeni Zelanda’nın başkenti neresidir?","o":["Hamilton","Christchurch","Auckland","Wellington"],"a":3},
-{"k":1,"q":"Pembe rengiyle ve turkuaz sularıyla bilinen Salda Gölü hangi ilimizdedir?","o":["Denizli","Isparta","Afyonkarahisar","Burdur"],"a":3},
+{"k":1,"q":"Beyaz kumsalları ve turkuaz suyuyla “Türkiye’nin Maldivleri” olarak anılan Salda Gölü hangi ilimizdedir?","o":["Denizli","Isparta","Afyonkarahisar","Burdur"],"a":3},
 {"k":2,"q":"Hücrenin enerji üretim merkezi olarak bilinen organel hangisidir?","o":["Koful","Ribozom","Golgi aygıtı","Mitokondri"],"a":3},
 {"k":2,"q":"Kanın pıhtılaşmasında görevli kan hücreleri hangileridir?","o":["Trombositler","Plazma hücreleri","Akyuvarlar","Alyuvarlar"],"a":0},
 {"k":2,"q":"Einstein, 1921 Nobel Fizik Ödülü’nü hangi çalışmasıyla kazanmıştır?","o":["Fotoelektrik olayı","Kara cisim ışıması","Özel görelilik","Genel görelilik"],"a":0},
@@ -73,7 +73,7 @@
 {"k":4,"q":"Türkiye Milli Futbol Takımı 2002 Dünya Kupası’nı kaçıncı olarak bitirmiştir?","o":["Üçüncü","İkinci","Dördüncü","Çeyrek finalist"],"a":0},
 {"k":4,"q":"Dünya Kupası’nı en çok kazanan ülke hangisidir?","o":["İtalya","Brezilya","Arjantin","Almanya"],"a":1},
 {"k":4,"q":"Futbolcu Pelé’nin tam adı nedir?","o":["Artur Antunes Coimbra","Ricardo Izecson Leite","Manuel dos Santos","Edson Arantes do Nascimento"],"a":3},
-{"k":4,"q":"Basketbolu icat eden James Naismith hangi ülke vatandaşıydı?","o":["İskoçya","ABD","İngiltere","Kanada"],"a":3},
+{"k":4,"q":"Basketbolu icat eden James Naismith hangi ülkede doğmuştur?","o":["İskoçya","ABD","İngiltere","Kanada"],"a":3},
 {"k":4,"q":"Wimbledon’da oyuncuların giymesi gereken geleneksel kıyafet rengi nedir?","o":["Beyaz","Mavi","Yeşil","Siyah"],"a":0},
 {"k":5,"q":"Dünyanın en büyük kuşu hangisidir?","o":["Kondor","Devekuşu","Albatros","Emu"],"a":1},
 {"k":5,"q":"Kara memelileri arasında gebelik süresi en uzun olan hayvan hangisidir?","o":["Gergedan","Fil","Su aygırı","Zürafa"],"a":1},
