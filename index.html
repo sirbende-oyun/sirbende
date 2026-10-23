@@ -686,6 +686,7 @@ a.btn { text-align: center; text-decoration: none; }
     </details>
     <div class="actions">
       <button class="btn" id="again" type="button">Tekrar oyna</button>
+      <button class="btn" id="cardBtn" type="button">Kartı paylaş</button>
       <button class="btn" id="challengeBtn" type="button">Arkadaşına meydan oku</button>
       <button class="btn ghost" id="menu" type="button">Ana menü</button>
       <button class="btn ghost" id="copy" type="button">Sonucu kopyala</button>
@@ -2992,6 +2993,17 @@ const QUESTIONS = [
     $("shareText").textContent = "Sır Bende’de " + fmt(st.score) + " puan topladım, " + st.correct + "/" + n +
       " doğru. Ünvanım: " + rank[1] + ".";
     $("copyStatus").textContent = "";
+    $("cardBtn").disabled = false;
+    $("cardBtn").hidden = n === 0;
+    if (n > 0) {
+      prepareCard({
+        name: me ? cleanName(me.ad) : "",
+        rank: rank[1], note: rank[2],
+        score: fmt(st.score), correct: st.correct, total: n, streak: st.maxStreak,
+        isBest: isBest && st.score > 0,
+        results: st.log.map(function (e) { return e.r; })
+      });
+    }
     show("end");
   }
 
@@ -3127,6 +3139,233 @@ const QUESTIONS = [
     viaClipboard();
   }
 
+  /* == PAYLAŞIM KARTI ==
+     Sonuç ekranındaki verilerle 1080x1350 (4:5) bir resim çizer. WhatsApp ve Instagram için uygun oranda.
+     Kartta yalnızca ilk ad görünür; soyad ve mahalle resme konmaz. */
+  var CARD = { W: 1080, H: 1350, URL: "sirbende-oyun.github.io/sirbende" };
+  var CARD_DISPLAY = '"Alfa Slab One", Georgia, "Times New Roman", serif';
+  var CARD_BODY = '"Rubik", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
+  function cardRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  /* Harfleri aralıklı, ortalı yazar (küçük büyük harfli etiketler için). */
+  function cardSpaced(ctx, text, cx, y, gap) {
+    var chars = text.split("");
+    var ws = chars.map(function (c) { return ctx.measureText(c).width; });
+    var total = ws.reduce(function (a, b) { return a + b; }, 0) + gap * (chars.length - 1);
+    var x = cx - total / 2;
+    var prev = ctx.textAlign;
+    ctx.textAlign = "left";
+    chars.forEach(function (c, i) { ctx.fillText(c, x, y); x += ws[i] + gap; });
+    ctx.textAlign = prev;
+    return total;
+  }
+  /* Metin genişliğe sığana kadar yazı boyutunu küçültür. */
+  function cardFit(ctx, text, maxW, px, min, family, weight) {
+    while (px > min) {
+      ctx.font = weight + " " + px + "px " + family;
+      if (ctx.measureText(text).width <= maxW) return px;
+      px -= 2;
+    }
+    ctx.font = weight + " " + px + "px " + family;
+    return px;
+  }
+  function cardWrap(ctx, text, maxW, maxLines) {
+    var words = String(text || "").split(" "), lines = [], line = "";
+    for (var i = 0; i < words.length; i++) {
+      var t = line ? line + " " + words[i] : words[i];
+      if (line && ctx.measureText(t).width > maxW) { lines.push(line); line = words[i]; }
+      else line = t;
+    }
+    if (line) lines.push(line);
+    return lines.slice(0, maxLines);
+  }
+  /* Kartta kullanılan yazı tipleri yüklenmeden çizilirse yedek yazı tipi görünür; önce bunları bekler. */
+  function cardFonts(d) {
+    if (!document.fonts || typeof document.fonts.load !== "function") return Promise.resolve();
+    var txt = "SIR BENDE BİLGİ YARIŞMASI ÜNVANIM PUAN DOĞRU EN UZUN SERİ YENİ REKOR 0123456789 " +
+      [d.name, d.rank, d.note, d.cta].join(" ");
+    return Promise.all([
+      document.fonts.load('96px "Alfa Slab One"', txt),
+      document.fonts.load('400 32px "Rubik"', txt),
+      document.fonts.load('500 28px "Rubik"', txt),
+      document.fonts.load('600 36px "Rubik"', txt),
+      document.fonts.load('700 46px "Rubik"', txt)
+    ]).then(function () {}, function () {});
+  }
+
+  function drawShareCard(canvas, d) {
+    var W = CARD.W, H = CARD.H, cx = W / 2;
+    var GOLD = "#F0A814", INK = "#2A1E00", GOOD = "#4FDDBE", BAD = "#FF8A7D";
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext("2d");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+
+    /* Zemin */
+    ctx.fillStyle = "#12256E"; ctx.fillRect(0, 0, W, H);
+    var g = ctx.createRadialGradient(cx, 300, 40, cx, 300, 780);
+    g.addColorStop(0, "rgba(42,79,196,0.95)"); g.addColorStop(1, "rgba(18,37,110,0)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = "rgba(240,168,20,0.16)"; ctx.lineWidth = 3;
+    [160, 240, 320].forEach(function (r) { ctx.beginPath(); ctx.arc(cx, 226, r, 0, Math.PI * 2); ctx.stroke(); });
+    ctx.strokeStyle = "rgba(240,168,20,0.45)"; ctx.lineWidth = 4;
+    cardRoundRect(ctx, 36, 36, W - 72, H - 72, 44); ctx.stroke();
+
+    /* Üst etiket, mühür ve ad */
+    ctx.fillStyle = GOLD; ctx.font = "500 26px " + CARD_BODY;
+    cardSpaced(ctx, "BİLGİ YARIŞMASI", cx, 104, 8);
+
+    ctx.save();
+    ctx.translate(cx - 88, 226 - 88); ctx.scale(1.76, 1.76);
+    ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(50, 50, 46, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(42,30,0,0.35)"; ctx.lineWidth = 2; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.arc(50, 50, 38, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(50, 44, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(45, 50); ctx.lineTo(55, 50); ctx.lineTo(59, 71); ctx.lineTo(41, 71); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = "#FFFFFF";
+    cardFit(ctx, "SIR BENDE", 860, 96, 56, CARD_DISPLAY, "400");
+    ctx.fillText("SIR BENDE", cx, 424);
+
+    /* Ünvan */
+    var who = d.name ? String(d.name).toLocaleUpperCase("tr-TR") : "ÜNVANIM";
+    ctx.fillStyle = "rgba(255,255,255,0.72)"; ctx.font = "600 28px " + CARD_BODY;
+    while (who.length > 3 && cardSpaced(ctx, who, -9999, -9999, 6) > 760) who = who.slice(0, -1);
+    cardSpaced(ctx, who, cx, 506, 6);
+
+    ctx.fillStyle = GOLD;
+    cardFit(ctx, d.rank, 900, 84, 44, CARD_DISPLAY, "400");
+    ctx.fillText(d.rank, cx, 594);
+
+    ctx.fillStyle = "rgba(255,255,255,0.82)"; ctx.font = "400 32px " + CARD_BODY;
+    cardWrap(ctx, d.note, 780, 2).forEach(function (ln, i) { ctx.fillText(ln, cx, 652 + i * 44); });
+
+    /* Puan paneli */
+    var PY = 760, PH = d.isBest ? 260 : 220;
+    cardRoundRect(ctx, 130, PY, 820, PH, 36);
+    ctx.fillStyle = "rgba(255,255,255,0.07)"; ctx.fill();
+    ctx.strokeStyle = "rgba(240,168,20,0.35)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = GOLD; ctx.font = "600 26px " + CARD_BODY;
+    cardSpaced(ctx, "PUAN", cx, PY + 48, 8);
+    var score = String(d.score);
+    ctx.fillStyle = "#FFFFFF";
+    cardFit(ctx, score, 700, 128, 64, CARD_DISPLAY, "400");
+    ctx.fillText(score, cx, PY + 168);
+    if (d.isBest) {
+      ctx.font = "700 22px " + CARD_BODY;
+      var tw = cardSpaced(ctx, "YENİ REKOR", -9999, -9999, 4);
+      var pw = tw + 56, px = cx - pw / 2, py = PY + 196;
+      cardRoundRect(ctx, px, py, pw, 38, 19); ctx.fillStyle = GOLD; ctx.fill();
+      ctx.fillStyle = INK; cardSpaced(ctx, "YENİ REKOR", cx, py + 26, 4);
+    }
+
+    /* Doğru sayısı ve en uzun seri */
+    var SY = PY + PH + 56;
+    var stats = [["DOĞRU", d.correct + " / " + d.total, 330], ["EN UZUN SERİ", String(d.streak), 750]];
+    stats.forEach(function (s) {
+      ctx.fillStyle = "rgba(255,255,255,0.62)"; ctx.font = "500 22px " + CARD_BODY;
+      cardSpaced(ctx, s[0], s[2], SY, 4);
+      ctx.fillStyle = "#FFFFFF"; ctx.font = "700 46px " + CARD_BODY;
+      ctx.fillText(s[1], s[2], SY + 52);
+    });
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, SY - 26); ctx.lineTo(cx, SY + 56); ctx.stroke();
+
+    /* Soru soru sonuç noktaları */
+    var res = d.results || [], n = res.length;
+    if (n > 0) {
+      var gap = 14, r = 19;
+      if (n * 2 * r + (n - 1) * gap > 820) r = Math.max(8, Math.floor((820 - (n - 1) * gap) / (2 * n)));
+      var total = n * 2 * r + (n - 1) * gap;
+      var x0 = cx - total / 2 + r, cy = SY + 112;
+      ctx.lineCap = "round"; ctx.lineWidth = Math.max(3, r / 5);
+      res.forEach(function (k, i) {
+        var x = x0 + i * (2 * r + gap), ok = k === "ok";
+        ctx.fillStyle = ok ? GOOD : BAD;
+        ctx.beginPath(); ctx.arc(x, cy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = INK; ctx.beginPath();
+        var u = r * 0.42;
+        if (ok) { ctx.moveTo(x - u, cy + u * 0.1); ctx.lineTo(x - u * 0.25, cy + u * 0.8); ctx.lineTo(x + u, cy - u * 0.7); }
+        else { ctx.moveTo(x - u * 0.8, cy - u * 0.8); ctx.lineTo(x + u * 0.8, cy + u * 0.8); ctx.moveTo(x + u * 0.8, cy - u * 0.8); ctx.lineTo(x - u * 0.8, cy + u * 0.8); }
+        ctx.stroke();
+      });
+    }
+
+    /* Alt yazı */
+    ctx.fillStyle = "#FFFFFF"; ctx.font = "600 36px " + CARD_BODY;
+    ctx.fillText(d.cta || "Beni geçebilir misin?", cx, 1246);
+    ctx.fillStyle = GOLD; ctx.font = "500 28px " + CARD_BODY;
+    ctx.fillText(CARD.URL, cx, 1286);
+    return canvas;
+  }
+  function makeShareCard(d) {
+    return cardFonts(d).then(function () { return drawShareCard(document.createElement("canvas"), d); });
+  }
+
+  /* Kartı paylaşma: resim oyun biter bitmez arka planda hazırlanır, böylece düğmeye basınca paylaşım menüsü hemen açılır.
+     Paylaşım menüsü dosya paylaşımını desteklemiyorsa resim indirilir. Hiçbir şey bir sunucuya gönderilmez. */
+  var lastCard = null, cardBlob = null, cardJob = 0;
+  function cardToBlob(d) {
+    return makeShareCard(d).then(function (canvas) {
+      return new Promise(function (res, rej) {
+        if (!canvas.toBlob) { rej(new Error("blob")); return; }
+        canvas.toBlob(function (b) { if (b) res(b); else rej(new Error("blob")); }, "image/png");
+      });
+    });
+  }
+  function prepareCard(d) {
+    var job = ++cardJob;
+    cardBlob = null;
+    lastCard = d;
+    try { cardToBlob(d).then(function (b) { if (job === cardJob) cardBlob = b; }, function () {}); } catch (e) {}
+  }
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+  function deliverCard(blob, status, btn) {
+    var done = function (msg) { btn.disabled = false; status.textContent = msg || ""; };
+    var saved = function () { saveBlob(blob, "sir-bende.png"); done("Kart resmi indirildi. Galerinden arkadaşına gönderebilirsin."); };
+    var c = invitePartsFor(endScore, false);
+    var file = null;
+    try { file = new File([blob], "sir-bende.png", { type: "image/png" }); } catch (e) {}
+    if (file && typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+      var p = navigator.share({ files: [file], text: c.text + " " + c.url });
+      p.then(function () { done(""); }, function (e) { if (e && e.name === "AbortError") done(""); else saved(); });
+      return;
+    }
+    saved();
+  }
+  function shareCard() {
+    var status = $("copyStatus"), btn = $("cardBtn");
+    if (!lastCard || btn.disabled) return;
+    btn.disabled = true;
+    status.textContent = "";
+    try {
+      if (cardBlob) { deliverCard(cardBlob, status, btn); return; }
+      status.textContent = "Kart hazırlanıyor…";
+      cardToBlob(lastCard).then(function (b) { cardBlob = b; deliverCard(b, status, btn); }, function () {
+        btn.disabled = false;
+        status.textContent = "Kart hazırlanamadı. “Sonucu kopyala” düğmesini deneyebilirsin.";
+      });
+    } catch (e) {
+      btn.disabled = false;
+      status.textContent = "Kart paylaşılamadı. “Sonucu kopyala” düğmesini deneyebilirsin.";
+    }
+  }
+
   /* == TELEFON ÖZELLİKLERİ ==
      Yalnızca uygulamada (Capacitor) ve eklentisi kuruluysa çalışır. Tarayıcıda ve artifact'ta hiçbir şey yapmaz, düğme görünmez. */
   var REMIND_ID = 1, REMIND_HOUR = 19;
@@ -3224,6 +3463,7 @@ const QUESTIONS = [
     var c = invitePartsFor(endScore, false);
     doShare(c.text, c.url, $("copyStatus"));
   });
+  $("cardBtn").addEventListener("click", shareCard);
   $("inviteHome").addEventListener("click", function () {
     var c = invitePartsFor(myBest(), true);
     doShare(c.text, c.url, $("inviteStatus"));

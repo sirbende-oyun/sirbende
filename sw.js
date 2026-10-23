@@ -1,7 +1,7 @@
 /* Sır Bende: internetsiz açılış için basit önbellek.
    Sayfa ve simgeler yüklenince önbelleğe alınır. Sonraki açılışta önce önbellekten gelir, arkada güncellenir.
    Güncelleme sonrası eski sürüm bir kez daha görünebilir. Sürüm değiştirince V değerini artırın. */
-var V = "sirbende-v1";
+var V = "sirbende-v2";
 var CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 var FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
