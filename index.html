@@ -395,6 +395,11 @@ a.btn { text-align: center; text-decoration: none; }
   padding: 12px 14px; margin: -8px 0 20px; background: var(--surface-2); border-radius: 12px; font-size: 0.9375rem;
 }
 .pending.notice { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; margin: -8px 0 20px; }
+.pending.challenge-box { border: 2px solid var(--action); font-weight: 600; margin: 4px 0 20px; }
+.challenge-result { margin: 4px 0 14px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-weight: 600; }
+.invite-status { margin-top: 6px; color: var(--ink-2); font-size: 0.875rem; }
+.invite-status:empty { display: none; }
+#inviteHome, #remindBtn { margin-top: 14px; }
 .restore { margin: 0 0 18px; padding: 12px 14px; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; }
 .restore summary { font-weight: 600; cursor: pointer; }
 .restore .form { margin: 14px 0 0; }
@@ -455,6 +460,7 @@ a.btn { text-align: center; text-decoration: none; }
       <button class="mbtn" id="musicHome" type="button" aria-pressed="true" aria-label="Fon müziği" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path class="on" d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a8 8 0 0 1 0 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
     </div>
     <p class="tagline" id="tagline">Soruyu bil, sırrı aç.</p>
+    <div class="pending challenge-box" id="challengeBox" hidden><span id="challengeText"></span></div>
     <div class="me" id="me" hidden>
       <div class="me-id">
         <span class="avatar" id="meAvatar" aria-hidden="true"></span>
@@ -500,6 +506,10 @@ a.btn { text-align: center; text-decoration: none; }
     <p class="rules" id="rules"></p>
     <button class="btn" id="start" type="button">Oyuna başla</button>
     <p class="best" id="best" hidden></p>
+    <button class="btn ghost" id="inviteHome" type="button">Arkadaşını davet et</button>
+    <p class="invite-status" id="inviteStatus" aria-live="polite"></p>
+    <button class="btn ghost" id="remindBtn" type="button" hidden>Günlük hatırlatma: Kapalı</button>
+    <p class="invite-status" id="remindStatus" aria-live="polite"></p>
   </section>
 
   <section id="register" hidden>
@@ -663,6 +673,7 @@ a.btn { text-align: center; text-decoration: none; }
     <span class="lbl">Toplam puan</span>
     <p class="final" id="final">0</p>
     <p class="new-best" id="newBest" hidden>Yeni rekor!</p>
+    <p class="challenge-result" id="challengeResult" hidden></p>
     <dl class="facts">
       <div><dt>Doğru cevap</dt><dd id="fCorrect"></dd></div>
       <div><dt>En uzun seri</dt><dd id="fStreak"></dd></div>
@@ -675,6 +686,7 @@ a.btn { text-align: center; text-decoration: none; }
     </details>
     <div class="actions">
       <button class="btn" id="again" type="button">Tekrar oyna</button>
+      <button class="btn" id="challengeBtn" type="button">Arkadaşına meydan oku</button>
       <button class="btn ghost" id="menu" type="button">Ana menü</button>
       <button class="btn ghost" id="copy" type="button">Sonucu kopyala</button>
     </div>
@@ -855,7 +867,7 @@ const QUESTIONS = [
   var ROUND = 10;
   var BASE_TIME = 20;
   var lastSecs = -1; /* son çalınan tik-tak saniyesi */
-  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox" };
+  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox", challenge: "sirbende:challenge", remind: "sirbende:remind" };
   var PERMANENT = { not_granted: 1, sampling_disabled: 1, not_declared: 1, capability_disabled: 1, capability_removed: 1 };
   var RANKS = [
     [9, "Sırların Efendisi", "Hiçbir sır senden saklanamıyor."],
@@ -2160,6 +2172,8 @@ const QUESTIONS = [
     }
     $("pending").hidden = !(me && needsSend(me));
     $("noticeBox").hidden = !(me && needsNotice(me));
+    renderChallenge();
+    renderRemind();
     syncFlush();
     var best = myBest();
     var b = $("best");
@@ -2806,6 +2820,7 @@ const QUESTIONS = [
       st.streak = 0;
     }
     st.score += pts;
+    haptic(ok ? "ok" : "no");
 
     var correctOpt = null;
     st.opts.forEach(function (o, i) {
@@ -2931,6 +2946,21 @@ const QUESTIONS = [
     if (me) fillAvatar($("endAvatar"), me);
     $("final").textContent = fmt(st.score);
     $("newBest").hidden = !(isBest && st.score > 0);
+    endScore = st.score;
+    var cr = $("challengeResult");
+    if (challenge && n > 0) {
+      var cp = challenge.p;
+      cr.textContent = st.score > cp
+        ? "Meydan okumayı kazandın! " + challenge.m + " " + fmt(cp) + " puan yapmıştı, sen " + fmt(st.score) + " yaptın."
+        : (st.score === cp
+          ? "Berabere kaldınız. İkiniz de " + fmt(cp) + " puan yaptınız."
+          : "Bu sefer olmadı. " + challenge.m + " " + fmt(cp) + " puan yapmıştı, sen " + fmt(st.score) + " yaptın. Geçmek için " + fmt(cp - st.score + 1) + " puan daha gerekirdi.");
+      cr.hidden = false;
+      challenge = null;
+      setJSON(KEYS.challenge, null);
+    } else {
+      cr.hidden = true;
+    }
     $("fCorrect").textContent = st.correct + " / " + n;
     $("fStreak").textContent = st.maxStreak;
     $("fBest").textContent = fmt(best);
@@ -3009,6 +3039,137 @@ const QUESTIONS = [
     enterApp();
   }
 
+  /* == MEYDAN OKUMA ==
+     Arkadaşa giden bağlantıda yalnızca oyuncunun adı ve puanı bulunur ve bu, oyuncu kendi paylaşma düğmesine basarsa olur.
+     Sunucu yoktur, kimseye bir şey kaydedilmez. Gelen bağlantıdaki değerler sıkı denetlenir ve yalnızca textContent ile gösterilir. */
+  var SHARE_URL = "https://sirbende-oyun.github.io/sirbende/";
+  var challenge = null;
+  var endScore = 0;
+  function cleanName(v) {
+    v = String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+    return /^[A-Za-zÇĞİÖŞÜÂÎÛçğıöşüâîû'’ -]{1,20}$/.test(v) ? v : "";
+  }
+  function validChallenge(c) {
+    if (!c || typeof c !== "object") return null;
+    var m = cleanName(c.m);
+    var p = typeof c.p === "number" && c.p >= 0 && c.p <= 99999 && Math.floor(c.p) === c.p ? c.p : -1;
+    return m && p >= 0 ? { m: m, p: p } : null;
+  }
+  function readChallengeUrl() {
+    try {
+      var q = String(location.search || "");
+      if (q.charAt(0) !== "?") return null;
+      var m = "", p = -1;
+      q.slice(1).split("&").forEach(function (kv) {
+        var i = kv.indexOf("=");
+        if (i < 0) return;
+        var k = kv.slice(0, i), v = kv.slice(i + 1);
+        try { v = decodeURIComponent(v.replace(/\+/g, " ")); } catch (e) { return; }
+        if (k === "m") m = cleanName(v);
+        else if (k === "p" && /^\d{1,5}$/.test(v)) p = parseInt(v, 10);
+      });
+      return m && p >= 0 ? { m: m, p: p } : null;
+    } catch (e) { return null; }
+  }
+  challenge = readChallengeUrl();
+  if (challenge) {
+    setJSON(KEYS.challenge, challenge);
+    try {
+      if (/^https?:$/.test(location.protocol) && typeof history !== "undefined" && typeof history.replaceState === "function") history.replaceState(null, "", location.pathname);
+    } catch (e) {}
+  } else {
+    challenge = validChallenge(getJSON(KEYS.challenge, null));
+  }
+  function renderChallenge() {
+    var box = $("challengeBox");
+    box.hidden = !challenge;
+    if (challenge) $("challengeText").textContent = challenge.m + " sana meydan okuyor: " + fmt(challenge.p) + " puanı geçebilir misin?";
+  }
+  function invitePartsFor(score, isBest) {
+    var ad = me ? cleanName(me.ad) : "";
+    if (!ad) ad = "Bir arkadaşın";
+    if (score > 0) {
+      return {
+        text: isBest
+          ? "Sır Bende’de en yüksek puanım " + fmt(score) + ". Beni geçebilir misin?"
+          : "Sır Bende’de " + fmt(score) + " puan yaptım. Beni geçebilir misin?",
+        url: SHARE_URL + "?m=" + encodeURIComponent(ad) + "&p=" + score
+      };
+    }
+    return { text: "Sır Bende’yi dene: soruyu bil, sırrı aç!", url: SHARE_URL };
+  }
+  function doShare(text, url, statusNode) {
+    var say = function (msg) { if (statusNode) statusNode.textContent = msg; };
+    if (statusNode) statusNode.textContent = "";
+    var viaClipboard = function () {
+      var p;
+      try { p = navigator.clipboard.writeText(text + " " + url); } catch (e) { p = Promise.reject(e); }
+      p.then(function () {
+        say("Davet metni kopyalandı. Arkadaşına yapıştırıp gönderebilirsin.");
+      }, function () {
+        say("Kopyalanamadı. Bu adresi elle gönderebilirsin: " + url);
+      });
+    };
+    try {
+      var cap = window.Capacitor;
+      var plug = cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform() && cap.Plugins && cap.Plugins.Share ? cap.Plugins.Share : null;
+      if (plug) {
+        var r = plug.share({ title: "Sır Bende", text: text, url: url, dialogTitle: "Arkadaşına gönder" });
+        if (r && typeof r.catch === "function") r.catch(function () {});
+        return;
+      }
+      if (typeof navigator.share === "function") {
+        var sp = navigator.share({ title: "Sır Bende", text: text, url: url });
+        if (sp && typeof sp.catch === "function") sp.catch(function (e) { if (!e || e.name !== "AbortError") viaClipboard(); });
+        return;
+      }
+    } catch (e) {}
+    viaClipboard();
+  }
+
+  /* == TELEFON ÖZELLİKLERİ ==
+     Yalnızca uygulamada (Capacitor) ve eklentisi kuruluysa çalışır. Tarayıcıda ve artifact'ta hiçbir şey yapmaz, düğme görünmez. */
+  var REMIND_ID = 1, REMIND_HOUR = 19;
+  function nativePlugin(name) {
+    try {
+      var cap = window.Capacitor;
+      return cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform() && cap.Plugins && cap.Plugins[name] ? cap.Plugins[name] : null;
+    } catch (e) { return null; }
+  }
+  function haptic(kind) {
+    try {
+      var h = nativePlugin("Haptics");
+      if (!h) return;
+      var r = h.notification({ type: kind === "ok" ? "SUCCESS" : "ERROR" });
+      if (r && typeof r.catch === "function") r.catch(function () {});
+    } catch (e) {}
+  }
+  function renderRemind() {
+    var b = $("remindBtn");
+    var has = !!nativePlugin("LocalNotifications");
+    b.hidden = !has;
+    if (has) b.textContent = getJSON(KEYS.remind, 0) === 1 ? "Günlük hatırlatma: Açık (her gün " + REMIND_HOUR + ":00)" : "Günlük hatırlatma: Kapalı";
+  }
+  function toggleRemind() {
+    var ln = nativePlugin("LocalNotifications");
+    var info = $("remindStatus");
+    if (!ln) return;
+    info.textContent = "";
+    var fail = function () { info.textContent = "Hatırlatma ayarlanamadı. Bildirim iznini telefonun Ayarlar bölümünden kontrol edebilirsin."; };
+    if (getJSON(KEYS.remind, 0) === 1) {
+      Promise.resolve().then(function () { return ln.cancel({ notifications: [{ id: REMIND_ID }] }); })
+        .then(function () { setJSON(KEYS.remind, 0); renderRemind(); }, fail);
+      return;
+    }
+    Promise.resolve().then(function () { return ln.requestPermissions(); }).then(function (res) {
+      if (!res || res.display !== "granted") { info.textContent = "Bildirim izni verilmedi. İstersen telefonun Ayarlar bölümünden açabilirsin."; return null; }
+      return Promise.resolve(ln.schedule({ notifications: [{
+        id: REMIND_ID, title: "Sır Bende", body: "Bugünkü sorular seni bekliyor. Sırrı açmaya hazır mısın?",
+        schedule: { on: { hour: REMIND_HOUR, minute: 0 }, allowWhileIdle: true }
+      }] })).then(function () { setJSON(KEYS.remind, 1); renderRemind(); });
+    }).then(null, fail);
+  }
+
   /* Olaylar */
   $("cover").addEventListener("click", openCover);
   $("musicHome").addEventListener("click", musicToggle);
@@ -3058,6 +3219,15 @@ const QUESTIONS = [
   $("again").addEventListener("click", start);
   $("menu").addEventListener("click", toMenu);
   $("copy").addEventListener("click", copyShare);
+  $("remindBtn").addEventListener("click", toggleRemind);
+  $("challengeBtn").addEventListener("click", function () {
+    var c = invitePartsFor(endScore, false);
+    doShare(c.text, c.url, $("copyStatus"));
+  });
+  $("inviteHome").addEventListener("click", function () {
+    var c = invitePartsFor(myBest(), true);
+    doShare(c.text, c.url, $("inviteStatus"));
+  });
   $("loadBank").addEventListener("click", loadBankClick);
   $("loadCancel").addEventListener("click", toMenu);
   Array.prototype.forEach.call(document.querySelectorAll('input[name="src"]'), function (el) {
