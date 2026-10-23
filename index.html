@@ -396,7 +396,9 @@ a.btn { text-align: center; text-decoration: none; }
   padding: 12px 14px; margin: -8px 0 20px; background: var(--surface-2); border-radius: 12px; font-size: 0.9375rem;
 }
 .pending.notice { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; margin: -8px 0 20px; }
-.pending.challenge-box { border: 2px solid var(--action); font-weight: 600; margin: 4px 0 20px; }
+.pending.challenge-box { border: 2px solid var(--action); font-weight: 600; margin: 4px 0 20px; flex-direction: column; align-items: stretch; gap: 12px; }
+.challenge-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.challenge-btns[hidden] { display: none; }
 .challenge-result { margin: 4px 0 14px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-weight: 600; }
 .invite-status { margin-top: 6px; color: var(--ink-2); font-size: 0.875rem; }
 .invite-status:empty { display: none; }
@@ -465,7 +467,13 @@ a.btn { text-align: center; text-decoration: none; }
       <button class="mbtn" id="musicHome" type="button" aria-pressed="true" aria-label="Fon müziği" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path class="on" d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a8 8 0 0 1 0 11"/><path class="off" d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
     </div>
     <p class="tagline" id="tagline">Soruyu bil, sırrı aç.</p>
-    <div class="pending challenge-box" id="challengeBox" hidden><span id="challengeText"></span></div>
+    <div class="pending challenge-box" id="challengeBox" hidden>
+      <span id="challengeText"></span>
+      <div class="challenge-btns" id="challengeBtns" hidden>
+        <button class="btn small" id="challengeGo" type="button">Meydan okumayı kabul et</button>
+        <button class="btn small ghost" id="challengeNo" type="button">Vazgeç</button>
+      </div>
+    </div>
     <div class="me" id="me" hidden>
       <div class="me-id">
         <span class="avatar" id="meAvatar" aria-hidden="true"></span>
@@ -882,7 +890,7 @@ const QUESTIONS = [
   var ROUND = 10;
   var BASE_TIME = 20;
   var lastSecs = -1; /* son çalınan tik-tak saniyesi */
-  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox", challenge: "sirbende:challenge", remind: "sirbende:remind" };
+  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox", challenge: "sirbende:challenge", remind: "sirbende:remind", bestq: "sirbende:bestq" };
   var PERMANENT = { not_granted: 1, sampling_disabled: 1, not_declared: 1, capability_disabled: 1, capability_removed: 1 };
   var RANKS = [
     [9, "Sırların Efendisi", "Hiçbir sır senden saklanamıyor."],
@@ -2967,7 +2975,7 @@ const QUESTIONS = [
     $("sealedNote").hidden = ok;
     $("reveal").classList.toggle("closed", !ok);
 
-    st.log.push({ q: q.q, a: correctOpt.t, v: vs, r: ok ? "ok" : (k < 0 ? "time" : "no") });
+    st.log.push({ q: q.q, a: correctOpt.t, v: vs, r: ok ? "ok" : (k < 0 ? "time" : "no"), id: q.id });
 
     $("score").textContent = fmt(st.score);
     $("streak").textContent = st.streak;
@@ -3046,14 +3054,18 @@ const QUESTIONS = [
     $("final").textContent = fmt(st.score);
     $("newBest").hidden = !(isBest && st.score > 0);
     endScore = st.score;
+    endQ = shareableIds(st.log);
+    if (isBest && st.score > 0) setJSON(KEYS.bestq, endQ ? { u: me ? me.id : "", p: st.score, q: endQ } : null);
     var cr = $("challengeResult");
-    if (challenge && n > 0) {
+    /* Soru kimlikli (aynı sorular) meydan okuma yalnızca "Meydan okumayı kabul et" ile açılan oyunla karşılaştırılır */
+    if (challenge && n > 0 && (!challenge.q || st.vs === challenge)) {
       var cp = challenge.p;
       cr.textContent = st.score > cp
         ? "Meydan okumayı kazandın! " + challenge.m + " " + fmt(cp) + " puan yapmıştı, sen " + fmt(st.score) + " yaptın."
         : (st.score === cp
           ? "Berabere kaldınız. İkiniz de " + fmt(cp) + " puan yaptınız."
           : "Bu sefer olmadı. " + challenge.m + " " + fmt(cp) + " puan yapmıştı, sen " + fmt(st.score) + " yaptın. Geçmek için " + fmt(cp - st.score + 1) + " puan daha gerekirdi.");
+      if (challenge.q && !st.same) cr.textContent += " Sorular aynı olmadığı için bu karşılaştırma tam adil değil.";
       cr.hidden = false;
       challenge = null;
       setJSON(KEYS.challenge, null);
@@ -3155,6 +3167,69 @@ const QUESTIONS = [
   var SHARE_URL = "https://sirbende-oyun.github.io/sirbende/";
   var challenge = null;
   var endScore = 0;
+  var endQ = null; /* biten oyunun soru kimlikleri (arkadaşın aynı soruları oynayabilmesi için), paylaşılamıyorsa null */
+  /* Soru kimlikleri: tam ROUND tane, her biri hash(q) biçiminde kısa bir yazı (0-9, a-z, en çok 7 karakter), tekrarsız */
+  function validIds(a) {
+    if (!Array.isArray(a) || a.length !== ROUND) return null;
+    var seen = {};
+    for (var i = 0; i < a.length; i++) {
+      if (typeof a[i] !== "string" || !/^[0-9a-z]{1,7}$/.test(a[i]) || seen[a[i]]) return null;
+      seen[a[i]] = 1;
+    }
+    return a.slice();
+  }
+  /* Hazır soru akışı (uygulamada sorular.json) yüklüyse kimlik -> soru tablosu; yoksa boş */
+  var genMapSrc = null, genMapVal = {};
+  function genIdx() {
+    try {
+      if (typeof feed !== "undefined" && feed && Array.isArray(feed.items)) {
+        if (genMapSrc !== feed.items) {
+          genMapSrc = feed.items;
+          genMapVal = {};
+          feed.items.forEach(function (x) { genMapVal[x.id] = x; });
+        }
+        return genMapVal;
+      }
+    } catch (e) {}
+    return {};
+  }
+  function genPool() {
+    try {
+      if (typeof feedOn === "function" && feedOn() && typeof feedLoad === "function") return feedLoad();
+    } catch (e) {}
+    return Promise.resolve([]);
+  }
+  /* Oynanan soruların hepsini arkadaşın telefonunda da bulabiliriz (hazır havuz ya da ortak soru akışı) ise kimlikleri verir */
+  function shareableIds(log) {
+    var gi = genIdx(), ids = [];
+    for (var i = 0; i < log.length; i++) {
+      var id = log[i].id;
+      if (!id || (!BANK_IDS[id] && !gi[id])) return null;
+      ids.push(id);
+    }
+    return validIds(ids);
+  }
+  function bestIds(score) {
+    var b = getJSON(KEYS.bestq, null);
+    if (!b || typeof b !== "object" || b.p !== score || b.u !== (me ? me.id : "")) return null;
+    return validIds(b.q);
+  }
+  var bankMap = null;
+  function bankGet(id) {
+    if (!bankMap) { bankMap = {}; BANK.forEach(function (b) { bankMap[b.id] = b; }); }
+    return Object.prototype.hasOwnProperty.call(bankMap, id) ? bankMap[id] : null;
+  }
+  /* Kimliklerden soru listesi kurar; biri bile bulunamazsa null (hepsi ya da hiçbiri) */
+  function resolveIds(ids, extra) {
+    var list = [];
+    for (var i = 0; i < ids.length; i++) {
+      var b = bankGet(ids[i]), x = extra && Object.prototype.hasOwnProperty.call(extra, ids[i]) ? extra[ids[i]] : null;
+      if (b) list.push(b);
+      else if (x) list.push({ c: x.c, q: x.q, o: x.o, a: x.a, s: "", id: x.id, gen: true });
+      else return null;
+    }
+    return list;
+  }
   function cleanName(v) {
     v = String(v == null ? "" : v).replace(/\s+/g, " ").trim();
     return /^[A-Za-zÇĞİÖŞÜÂÎÛçğıöşüâîû'’ -]{1,20}$/.test(v) ? v : "";
@@ -3163,13 +3238,15 @@ const QUESTIONS = [
     if (!c || typeof c !== "object") return null;
     var m = cleanName(c.m);
     var p = typeof c.p === "number" && c.p >= 0 && c.p <= 99999 && Math.floor(c.p) === c.p ? c.p : -1;
-    return m && p >= 0 ? { m: m, p: p } : null;
+    var ids = validIds(c.q);
+    if (!(m && p >= 0)) return null;
+    return ids ? { m: m, p: p, q: ids } : { m: m, p: p };
   }
   function readChallengeUrl() {
     try {
       var q = String(location.search || "");
       if (q.charAt(0) !== "?") return null;
-      var m = "", p = -1;
+      var m = "", p = -1, qs = "";
       q.slice(1).split("&").forEach(function (kv) {
         var i = kv.indexOf("=");
         if (i < 0) return;
@@ -3177,8 +3254,11 @@ const QUESTIONS = [
         try { v = decodeURIComponent(v.replace(/\+/g, " ")); } catch (e) { return; }
         if (k === "m") m = cleanName(v);
         else if (k === "p" && /^\d{1,5}$/.test(v)) p = parseInt(v, 10);
+        else if (k === "q") qs = v;
       });
-      return m && p >= 0 ? { m: m, p: p } : null;
+      var ids = qs ? validIds(qs.split(".")) : null;
+      if (!(m && p >= 0)) return null;
+      return ids ? { m: m, p: p, q: ids } : { m: m, p: p };
     } catch (e) { return null; }
   }
   challenge = readChallengeUrl();
@@ -3193,17 +3273,71 @@ const QUESTIONS = [
   function renderChallenge() {
     var box = $("challengeBox");
     box.hidden = !challenge;
-    if (challenge) $("challengeText").textContent = challenge.m + " sana meydan okuyor: " + fmt(challenge.p) + " puanı geçebilir misin?";
+    var seeded = !!(challenge && challenge.q);
+    $("challengeBtns").hidden = !seeded;
+    if (challenge) {
+      $("challengeText").textContent = challenge.m + " sana meydan okuyor: " + fmt(challenge.p) + " puanı geçebilir misin?" +
+        (seeded ? " Aynı " + challenge.q.length + " soruyu sen de oynayacaksın." : "");
+    }
   }
-  function invitePartsFor(score, isBest) {
+  function dropChallenge() {
+    challenge = null;
+    setJSON(KEYS.challenge, null);
+    renderChallenge();
+  }
+  /* "Meydan okumayı kabul et": arkadaşın oynadığı soruların aynısı, aynı sırayla */
+  function playSeeded(ch, list) {
+    abortGen();
+    st = newState(-1, "bank");
+    st.list = list.slice();
+    list.forEach(function (q) { st.ids[q.id] = 1; });
+    st.vs = ch;
+    st.same = true;
+    st.started = true;
+    show("game");
+    render();
+  }
+  function startChallenge() {
+    if (!me) { enterApp(); return; }
+    var ch = challenge;
+    if (!ch || !ch.q) { start(); return; }
+    notePlay();
+    abortGen();
+    var list = resolveIds(ch.q, null);
+    if (list) { playSeeded(ch, list); return; }
+    /* Bazıları ortak soru akışında: önce onu getir */
+    var my = newState(-1, "bank");
+    st = my;
+    setLoading("Meydan okuyanın soruları getiriliyor…", "Aynı sorular hazırlanıyor, birkaç saniye sürebilir.");
+    show("loading");
+    var fallback = function () {
+      if (st !== my || my.started) return;
+      startBank(-1, "Meydan okuyanın soruları bu telefonda açılamadı, rastgele sorularla oynuyorsun.");
+      st.vs = ch;
+      st.same = false;
+    };
+    genPool().then(function (items) {
+      if (st !== my || my.started) return;
+      var map = {};
+      (items || []).forEach(function (x) { if (x && typeof x.id === "string") map[x.id] = x; });
+      var l2 = resolveIds(ch.q, map);
+      if (l2) playSeeded(ch, l2); else fallback();
+    }, fallback);
+  }
+  function invitePartsFor(score, isBest, ids) {
     var ad = me ? cleanName(me.ad) : "";
     if (!ad) ad = "Bir arkadaşın";
     if (score > 0) {
+      var q = validIds(ids);
       return {
-        text: isBest
-          ? "Sır Bende’de en yüksek puanım " + fmt(score) + ". Beni geçebilir misin?"
-          : "Sır Bende’de " + fmt(score) + " puan yaptım. Beni geçebilir misin?",
-        url: SHARE_URL + "?m=" + encodeURIComponent(ad) + "&p=" + score
+        text: q
+          ? (isBest
+            ? "Sır Bende’de en yüksek puanım " + fmt(score) + ". Aynı soruları oynayıp beni geçebilir misin?"
+            : "Sır Bende’de " + fmt(score) + " puan yaptım. Aynı soruları oynayıp beni geçebilir misin?")
+          : (isBest
+            ? "Sır Bende’de en yüksek puanım " + fmt(score) + ". Beni geçebilir misin?"
+            : "Sır Bende’de " + fmt(score) + " puan yaptım. Beni geçebilir misin?"),
+        url: SHARE_URL + "?m=" + encodeURIComponent(ad) + "&p=" + score + (q ? "&q=" + q.join(".") : "")
       };
     }
     return { text: "Sır Bende’yi dene: soruyu bil, sırrı aç!", url: SHARE_URL };
@@ -3436,7 +3570,7 @@ const QUESTIONS = [
   function deliverCard(blob, status, btn) {
     var done = function (msg) { btn.disabled = false; status.textContent = msg || ""; };
     var saved = function () { saveBlob(blob, "sir-bende.png"); done("Kart resmi indirildi. Galerinden arkadaşına gönderebilirsin."); };
-    var c = invitePartsFor(endScore, false);
+    var c = invitePartsFor(endScore, false, endQ);
     var file = null;
     try { file = new File([blob], "sir-bende.png", { type: "image/png" }); } catch (e) {}
     if (file && typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
@@ -3636,12 +3770,14 @@ const QUESTIONS = [
   $("installBtn").addEventListener("click", onInstall);
   $("installClose").addEventListener("click", function () { $("installHelp").hidden = true; });
   $("challengeBtn").addEventListener("click", function () {
-    var c = invitePartsFor(endScore, false);
+    var c = invitePartsFor(endScore, false, endQ);
     doShare(c.text, c.url, $("copyStatus"));
   });
+  $("challengeGo").addEventListener("click", startChallenge);
+  $("challengeNo").addEventListener("click", dropChallenge);
   $("cardBtn").addEventListener("click", shareCard);
   $("inviteHome").addEventListener("click", function () {
-    var c = invitePartsFor(myBest(), true);
+    var c = invitePartsFor(myBest(), true, bestIds(myBest()));
     doShare(c.text, c.url, $("inviteStatus"));
   });
   $("loadBank").addEventListener("click", loadBankClick);
