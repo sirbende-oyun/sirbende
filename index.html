@@ -394,6 +394,7 @@ a.btn { text-align: center; text-decoration: none; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 12px 14px; margin: -8px 0 20px; background: var(--surface-2); border-radius: 12px; font-size: 0.9375rem;
 }
+.pending.notice { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; margin: -8px 0 20px; }
 .restore { margin: 0 0 18px; padding: 12px 14px; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; }
 .restore summary { font-weight: 600; cursor: pointer; }
 .restore .form { margin: 14px 0 0; }
@@ -469,9 +470,9 @@ a.btn { text-align: center; text-decoration: none; }
       <span>Kaydın henüz uygulamanın sahibine gönderilmedi.</span>
       <button class="btn small" id="pendingGo" type="button">Gönder</button>
     </div>
-    <div class="pending" id="resendBox" hidden>
-      <span>Puanını ve son oynama zamanını sahibine göndermek istersen:</span>
-      <button class="btn ghost small" id="resendGo" type="button">Bilgilerimi gönder</button>
+    <div class="pending notice" id="noticeBox" hidden>
+      <span>Adın, yaşın, yerin, puanın ve oynama zamanın yapımcı tarafından kaydedilir.</span>
+      <button class="btn" id="noticeOk" type="button">Tamam</button>
     </div>
 
     <fieldset class="field">
@@ -854,7 +855,7 @@ const QUESTIONS = [
   var ROUND = 10;
   var BASE_TIME = 20;
   var lastSecs = -1; /* son çalınan tik-tak saniyesi */
-  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music" };
+  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox" };
   var PERMANENT = { not_granted: 1, sampling_disabled: 1, not_declared: 1, capability_disabled: 1, capability_removed: 1 };
   var RANKS = [
     [9, "Sırların Efendisi", "Hiçbir sır senden saklanamıyor."],
@@ -1503,7 +1504,7 @@ const QUESTIONS = [
     }).slice(0, MAX_PROFILES).map(function (p) {
       return { id: p.id, ad: clean(p.ad), soyad: clean(p.soyad), dogum: p.dogum, yer: clean(p.yer),
         best: Math.max(0, parseInt(p.best, 10) || 0), created: p.created || 0, sent: p.sent === true,
-        last: Math.max(0, Number(p.last) || 0), plays: Math.max(0, parseInt(p.plays, 10) || 0),
+        last: Math.max(0, Number(p.last) || 0), plays: Math.max(0, parseInt(p.plays, 10) || 0), izin: p.izin === true,
         foto: photoOk(p.foto) ? p.foto : "" };
     });
   }
@@ -1799,7 +1800,7 @@ const QUESTIONS = [
   /* Ücretsiz yol: depodaki sorular.json dosyasını (GitHub Actions + GitHub Models her 3 saatte bir yeniler) arka planda çeker.
      Sunucu ve anahtar gerekmez. Liste boşsa ya da dosya yoksa bu mod kapalı kalır. */
   var FEED = { urls: ["https://raw.githubusercontent.com/sirbende-oyun/sirbende/HEAD/sorular.json", "sorular.json"] };
-  function sendOn() { return /^https:\/\/tally\.so\/r\/[A-Za-z0-9]+$/.test(SEND.url); }
+  function sendOn() { return !syncOn() && /^https:\/\/tally\.so\/r\/[A-Za-z0-9]+$/.test(SEND.url); }
   function needsSend(p) { return sendOn() && p && p.sent !== true; }
   function trDate(v) { var d = parseDate(v); return d ? pad2(d.d) + "." + pad2(d.m) + "." + d.y : v; }
   function stamp(ms) {
@@ -1835,6 +1836,46 @@ const QUESTIONS = [
     saveProfiles();
   }
 
+  /* Oyun bilgileri: oyuncu ana sayfadaki "Tamam"a bastıktan sonra ad, yaş, yer, puan ve oynama zamanı yapımcının
+     Google Formuna yazılır (Tablo'da bir satır olur). Adres boşsa özellik kapalıdır ve hiçbir şey gönderilmez.
+     Gönderilemeyenler cihazda bekler, bağlantı gelince yeniden denenir. */
+  var SYNC = { url: "https://docs.google.com/forms/d/e/1FAIpQLScszwKSWWX329poS97x9TAdj_f81B0s--HJwzfCc2wLUKnIdQ/formResponse", f: { ad: "entry.2028070823", soyad: "entry.203071696", yas: "entry.1900164687", yer: "entry.316081222", son: "entry.615579612", puan: "entry.685216786", rekor: "entry.371316054", oyun: "entry.1677044657" } };
+  function syncOn() {
+    if (!/^https:\/\/docs\.google\.com\/forms\/d\/e\/[A-Za-z0-9_-]+\/formResponse$/.test(SYNC.url)) return false;
+    for (var k in SYNC.f) if (!/^entry\.\d+$/.test(SYNC.f[k])) return false;
+    return true;
+  }
+  function needsNotice(p) { return syncOn() && p && p.izin !== true; }
+  function outbox() {
+    var a = getJSON(KEYS.outbox, []);
+    return Array.isArray(a) ? a.filter(function (x) { return x && typeof x.q === "string" && x.r && typeof x.r === "object"; }) : [];
+  }
+  function syncQueue(p, puan) {
+    if (!syncOn() || !p || p.izin !== true) return;
+    var box = outbox();
+    box.push({ q: Date.now() + "-" + Math.random().toString(36).slice(2, 7), r: {
+      ad: p.ad, soyad: p.soyad, yas: String(ageOf(p.dogum)), yer: p.yer, son: stamp(Date.now()),
+      puan: puan == null ? "" : String(puan), rekor: String(p.best || 0), oyun: String(p.plays || 0) } });
+    setJSON(KEYS.outbox, box.slice(-30));
+    syncFlush();
+  }
+  var syncBusy = false;
+  function syncFlush() {
+    if (syncBusy || !syncOn() || typeof fetch !== "function" || typeof URLSearchParams !== "function") return;
+    syncBusy = true;
+    function drop(q) { setJSON(KEYS.outbox, outbox().filter(function (x) { return x.q !== q; })); }
+    function next() {
+      var item = outbox()[0];
+      if (!item) { syncBusy = false; return; }
+      var body = new URLSearchParams();
+      for (var k in SYNC.f) body.set(SYNC.f[k], String(item.r[k] == null ? "" : item.r[k]));
+      var pr;
+      try { pr = Promise.resolve(fetch(SYNC.url, { method: "POST", mode: "no-cors", keepalive: true, body: body })); } catch (e) { pr = Promise.reject(e); }
+      pr.then(function () { drop(item.q); next(); }, function () { syncBusy = false; });
+    }
+    next();
+  }
+
   /* Uygulamaya giriş: kayıtlı oyuncu varsa ana sayfa, yoksa kayıt ya da seçim ekranı */
   function enterApp() {
     if (me) { renderHome(); show("home"); return "home"; }
@@ -1858,7 +1899,9 @@ const QUESTIONS = [
     clearRegPhoto();
     $("regDogum").setAttribute("max", todayStr());
     showRegErr(null);
-    $("privacyNote").textContent = sendOn()
+    $("privacyNote").textContent = syncOn()
+      ? "Bilgilerin bu cihazda saklanır. Ana sayfadaki Tamam'a basarsan adın, yaşın, yerin ve oyun bilgilerin yapımcı tarafından kaydedilir. Basmazsan hiçbir şey gönderilmez. Cihazındaki kaydı istediğin zaman silebilirsin."
+      : sendOn()
       ? "Bilgilerin bu cihazda saklanır ve gönderirsen uygulamanın sahibine ulaşır. Yalnızca sahibi görür. Cihazındaki kaydı istediğin zaman silebilirsin."
       : "Bilgilerin yalnızca bu cihazda, bu tarayıcıda saklanır. Kimseye gönderilmez, uygulamanın sahibi de göremez. İstediğin zaman silebilirsin.";
     $("regCancel").hidden = !profiles.length;
@@ -2116,7 +2159,8 @@ const QUESTIONS = [
       $("tagline").textContent = "Soruyu bil, sırrı aç.";
     }
     $("pending").hidden = !(me && needsSend(me));
-    $("resendBox").hidden = !(me && sendOn() && !needsSend(me));
+    $("noticeBox").hidden = !(me && needsNotice(me));
+    syncFlush();
     var best = myBest();
     var b = $("best");
     if (best > 0) {
@@ -2616,7 +2660,7 @@ const QUESTIONS = [
   function bgInit() {
     if (getJSON(KEYS.ai, 0) === 1) { bg.armed = true; bgKick(2500); }
   }
-  document.addEventListener("visibilitychange", function () { if (!document.hidden) bgKick(1500); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { bgKick(1500); syncFlush(); } });
 
   function startAI(scope) {
     abortGen();
@@ -2871,6 +2915,7 @@ const QUESTIONS = [
     var isBest = st.score > prevBest;
     if (isBest) { if (me) { me.best = st.score; saveProfiles(); } else setJSON(KEYS.best, st.score); }
     var best = Math.max(prevBest, st.score);
+    if (me && st.log.length > 0) syncQueue(me, st.score);
 
     var rank = RANKS[RANKS.length - 1];
     for (var i = 0; i < RANKS.length; i++) {
@@ -2992,7 +3037,13 @@ const QUESTIONS = [
     } catch (err) {}
   });
   $("pendingGo").addEventListener("click", openSend);
-  $("resendGo").addEventListener("click", openSend);
+  $("noticeOk").addEventListener("click", function () {
+    if (!me) return;
+    me.izin = true;
+    saveProfiles();
+    syncQueue(me, null);
+    renderHome();
+  });
   $("switch").addEventListener("click", function () { pendingDel = null; renderPlayers(); show("players"); });
   $("addPlayer").addEventListener("click", function () { openRegister("players"); });
   $("playersBack").addEventListener("click", enterApp);
