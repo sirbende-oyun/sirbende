@@ -469,6 +469,10 @@ a.btn { text-align: center; text-decoration: none; }
       <span>Kaydın henüz uygulamanın sahibine gönderilmedi.</span>
       <button class="btn small" id="pendingGo" type="button">Gönder</button>
     </div>
+    <div class="pending" id="resendBox" hidden>
+      <span>Puanını ve son oynama zamanını sahibine göndermek istersen:</span>
+      <button class="btn ghost small" id="resendGo" type="button">Bilgilerimi gönder</button>
+    </div>
 
     <fieldset class="field">
       <legend class="lbl">Kategori</legend>
@@ -561,6 +565,7 @@ a.btn { text-align: center; text-decoration: none; }
   <section id="send" hidden>
     <h2 class="page-title">Son adım</h2>
     <p class="lead">Kaydını uygulamanın sahibine göndermek için aşağıdaki düğmeye bas. Bilgilerin dolu hâlde bir form açılır, formda <strong>Gönder</strong>'e basman yeterli. 18 yaşından küçüksen ailenin bilgisi olsun.</p>
+    <p class="lead" id="sendWhat"></p>
     <div class="stack">
       <a class="btn" id="sendLink" href="#" target="_blank" rel="noopener noreferrer">Kaydı gönder</a>
       <button class="btn ghost" id="sendDone" type="button">Gönderdim, devam et</button>
@@ -1498,6 +1503,7 @@ const QUESTIONS = [
     }).slice(0, MAX_PROFILES).map(function (p) {
       return { id: p.id, ad: clean(p.ad), soyad: clean(p.soyad), dogum: p.dogum, yer: clean(p.yer),
         best: Math.max(0, parseInt(p.best, 10) || 0), created: p.created || 0, sent: p.sent === true,
+        last: Math.max(0, Number(p.last) || 0), plays: Math.max(0, parseInt(p.plays, 10) || 0),
         foto: photoOk(p.foto) ? p.foto : "" };
     });
   }
@@ -1751,7 +1757,7 @@ const QUESTIONS = [
         box.hidden = false;
         return;
       }
-      p = { id: newId(), ad: d.ad, soyad: d.soyad, dogum: d.dogum, yer: d.yer, best: d.best, created: Date.now(), sent: d.sent, foto: "" };
+      p = { id: newId(), ad: d.ad, soyad: d.soyad, dogum: d.dogum, yer: d.yer, best: d.best, created: Date.now(), sent: d.sent, last: 0, plays: 0, foto: "" };
       profiles.push(p);
     }
     box.hidden = true;
@@ -1796,18 +1802,37 @@ const QUESTIONS = [
   function sendOn() { return /^https:\/\/tally\.so\/r\/[A-Za-z0-9]+$/.test(SEND.url); }
   function needsSend(p) { return sendOn() && p && p.sent !== true; }
   function trDate(v) { var d = parseDate(v); return d ? pad2(d.d) + "." + pad2(d.m) + "." + d.y : v; }
+  function stamp(ms) {
+    var d = new Date(ms);
+    return pad2(d.getDate()) + "." + pad2(d.getMonth() + 1) + "." + d.getFullYear() + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
   function sendUrl(p) {
     return SEND.url + "?" + [
       "ad=" + encodeURIComponent(p.ad),
       "soyad=" + encodeURIComponent(p.soyad),
       "dogum=" + encodeURIComponent(trDate(p.dogum)),
-      "yer=" + encodeURIComponent(p.yer)
+      "yer=" + encodeURIComponent(p.yer),
+      "son=" + encodeURIComponent(p.last > 0 ? stamp(p.last) : "henüz oynamadı"),
+      "puan=" + (p.best || 0),
+      "oyun=" + (p.plays || 0)
     ].join("&");
+  }
+  function sendSummary(p) {
+    return "Formla gönderilecek bilgiler: ad, soyad, doğum tarihi, yer, en yüksek puanın (" + fmt(p.best || 0) + "), oynadığın oyun sayısı (" +
+      (p.plays || 0) + ") ve son oynama zamanın (" + (p.last > 0 ? stamp(p.last) : "henüz oynamadın") + ").";
   }
   function openSend() {
     if (!me) { enterApp(); return; }
     $("sendLink").setAttribute("href", sendUrl(me));
+    $("sendWhat").textContent = sendSummary(me);
     show("send");
+  }
+  /* Oyun başlayınca: son oynama zamanı ve oyun sayısı yalnızca bu cihazdaki kayda yazılır */
+  function notePlay() {
+    if (!me) return;
+    me.last = Date.now();
+    me.plays = (me.plays || 0) + 1;
+    saveProfiles();
   }
 
   /* Uygulamaya giriş: kayıtlı oyuncu varsa ana sayfa, yoksa kayıt ya da seçim ekranı */
@@ -1857,17 +1882,18 @@ const QUESTIONS = [
     });
     var foto = regPhoto;
     if (same) {
-      var oldYer = same.yer, oldFoto = same.foto || "";
+      var oldYer = same.yer, oldFoto = same.foto || "", oldSent = same.sent === true;
       same.yer = f.yer;
+      if (f.yer !== oldYer) same.sent = false; /* yer değiştiyse yeni bilgi sahibine yeniden gönderilsin */
       if (foto) same.foto = foto;
-      if (!saveChecked(same, foto, function () { same.yer = oldYer; same.foto = oldFoto; })) { photoNoRoom(); return; }
+      if (!saveChecked(same, foto, function () { same.yer = oldYer; same.foto = oldFoto; same.sent = oldSent; })) { photoNoRoom(); return; }
       setActive(same);
     } else {
       if (profiles.length >= MAX_PROFILES) {
         showRegErr({ field: "regAd", msg: "Bu cihazda en fazla " + MAX_PROFILES + " kayıt olabilir. Bir kaydı silip tekrar dene." });
         return;
       }
-      var p = { id: newId(), ad: f.ad, soyad: f.soyad, dogum: f.dogum, yer: f.yer, best: 0, created: Date.now(), sent: false, foto: foto };
+      var p = { id: newId(), ad: f.ad, soyad: f.soyad, dogum: f.dogum, yer: f.yer, best: 0, created: Date.now(), sent: false, last: 0, plays: 0, foto: foto };
       if (!profiles.length) { var old = loadBest(); if (old > 0) p.best = old; }
       profiles.push(p);
       if (!saveChecked(p, foto, function () { profiles.pop(); })) { photoNoRoom(); return; }
@@ -2090,6 +2116,7 @@ const QUESTIONS = [
       $("tagline").textContent = "Soruyu bil, sırrı aç.";
     }
     $("pending").hidden = !(me && needsSend(me));
+    $("resendBox").hidden = !(me && sendOn() && !needsSend(me));
     var best = myBest();
     var b = $("best");
     if (best > 0) {
@@ -2305,6 +2332,7 @@ const QUESTIONS = [
 
   function start() {
     if (!me) { enterApp(); return; }
+    notePlay();
     var sel = document.querySelector('input[name="cat"]:checked').value;
     var scope = sel === "all" ? -1 : Number(sel);
     if (currentSrc() === "ai" && sampleFn) startAI(scope); else startBank(scope, "");
@@ -2964,6 +2992,7 @@ const QUESTIONS = [
     } catch (err) {}
   });
   $("pendingGo").addEventListener("click", openSend);
+  $("resendGo").addEventListener("click", openSend);
   $("switch").addEventListener("click", function () { pendingDel = null; renderPlayers(); show("players"); });
   $("addPlayer").addEventListener("click", function () { openRegister("players"); });
   $("playersBack").addEventListener("click", enterApp);
