@@ -507,6 +507,9 @@ a.btn { text-align: center; text-decoration: none; }
         <label class="chip"><input type="radio" name="cat" id="cat-3" value="3"><span>Kültür ve Sanat</span></label>
         <label class="chip"><input type="radio" name="cat" id="cat-4" value="4"><span>Spor</span></label>
         <label class="chip"><input type="radio" name="cat" id="cat-5" value="5"><span>Doğa</span></label>
+        <label class="chip"><input type="radio" name="cat" id="cat-6" value="6"><span>Edebiyat</span></label>
+        <label class="chip"><input type="radio" name="cat" id="cat-7" value="7"><span>Atasözleri ve Deyimler</span></label>
+        <label class="chip"><input type="radio" name="cat" id="cat-8" value="8"><span>Peygamberler Tarihi</span></label>
       </div>
     </fieldset>
 
@@ -867,7 +870,73 @@ const QUESTIONS = [
   [5, "Köpekbalıkları hangi hayvan grubuna girer?", ["Memeliler", "Balıklar", "Sürüngenler", "Yumuşakçalar"], 1, "Köpekbalıklarının iskeleti kemikten değil kıkırdaktan oluşur."],
   [5, "Bir ağacın yaşı, kesilen gövdesindeki neye bakılarak tahmin edilebilir?", ["Yıllık halkalara", "Yaprak sayısına", "Kabuk rengine", "Kök uzunluğuna"], 0, "Ağaç halkalarını inceleyen bilim dalına dendrokronoloji denir. Halkalar geçmiş iklimler hakkında da bilgi verir."],
   [5, "Hangi hayvan uyurken beyninin yarısını uyanık tutabilir?", ["Yunus", "Köpek", "Fil", "Kedi"], 0, "Yunuslar bu sayede uyurken de nefes almak için yüzeye çıkmayı sürdürür."],
-  [5, "Leylekler kışı genellikle hangi kıtada geçirir?", ["Afrika", "Avustralya", "Güney Amerika", "Antarktika"], 0, "Avrupa ile Afrika arasındaki göç yolunda leylekler özellikle İstanbul ve Çanakkale Boğazları üzerinden geçer."]
+  [5, "Leylekler kışı genellikle hangi kıtada geçirir?", ["Afrika", "Avustralya", "Güney Amerika", "Antarktika"], 0, "Avrupa ile Afrika arasındaki göç yolunda leylekler özellikle İstanbul ve Çanakkale Boğazları üzerinden geçer."],
+
+  /* Yeni kategori: 6 Edebiyat */
+  [6, "Çalıkuşu romanının yazarı kimdir?", ["Halide Edib Adıvar", "Reşat Nuri Güntekin", "Yakup Kadri Karaosmanoğlu", "Peyami Safa"], 1, ""],
+  [6, "İstiklal Marşı’nın şairi kimdir?", ["Ziya Gökalp", "Namık Kemal", "Mehmet Akif Ersoy", "Tevfik Fikret"], 2, ""],
+  [6, "Don Kişot romanının yazarı kimdir?", ["Cervantes", "Dante", "Shakespeare", "Balzac"], 0, ""],
+  [6, "Sefiller romanının yazarı kimdir?", ["Charles Dickens", "Alexandre Dumas", "Gustave Flaubert", "Victor Hugo"], 3, ""],
+  [6, "Romeo ve Juliet adlı oyunun yazarı kimdir?", ["Molière", "Goethe", "William Shakespeare", "Oscar Wilde"], 2, ""],
+  [6, "Kürk Mantolu Madonna romanının yazarı kimdir?", ["Sabahattin Ali", "Orhan Kemal", "Oğuz Atay", "Sait Faik Abasıyanık"], 0, ""],
+  [6, "Saatleri Ayarlama Enstitüsü romanının yazarı kimdir?", ["Peyami Safa", "Yusuf Atılgan", "Kemal Tahir", "Ahmet Hamdi Tanpınar"], 3, ""],
+  [6, "Harry Potter serisinin yazarı kimdir?", ["Roald Dahl", "J. K. Rowling", "C. S. Lewis", "Enid Blyton"], 1, ""],
+  [6, "Suç ve Ceza romanının yazarı kimdir?", ["Dostoyevski", "Tolstoy", "Çehov", "Gogol"], 0, ""],
+  [6, "Sherlock Holmes’un yaratıcısı olan yazar kimdir?", ["Agatha Christie", "Edgar Allan Poe", "Arthur Conan Doyle", "Charles Dickens"], 2, ""],
+  [6, "Tutunamayanlar romanının yazarı kimdir?", ["Ahmet Hamdi Tanpınar", "Yusuf Atılgan", "Bilge Karasu", "Oğuz Atay"], 3, ""],
+  [6, "İlyada ve Odysseia destanlarının yazarı olarak bilinen kişi kimdir?", ["Vergilius", "Homeros", "Sofokles", "Herodot"], 1, ""],
+  [6, "Sinekli Bakkal romanının yazarı kimdir?", ["Reşat Nuri Güntekin", "Peyami Safa", "Halide Edib Adıvar", "Refik Halit Karay"], 2, ""],
+  [6, "Dede Korkut Hikâyeleri hangi Türk topluluğunun anlatılarını içerir?", ["Oğuzlar", "Kıpçaklar", "Karahanlılar", "Hunlar"], 0, ""],
+  [6, "Simyacı romanının yazarı kimdir?", ["Umberto Eco", "Paulo Coelho", "José Saramago", "Haruki Murakami"], 1, ""],
+  [6, "1984 romanının yazarı kimdir?", ["Aldous Huxley", "Ray Bradbury", "Franz Kafka", "George Orwell"], 3, ""],
+  [6, "Küçük Prens kitabının yazarı kimdir?", ["Antoine de Saint-Exupéry", "Jules Verne", "Albert Camus", "Jean-Paul Sartre"], 0, ""],
+  [6, "Yüzyıllık Yalnızlık romanının yazarı kimdir?", ["Jorge Luis Borges", "Pablo Neruda", "Isabel Allende", "Gabriel García Márquez"], 3, ""],
+  [6, "Memleketimden İnsan Manzaraları adlı şiirli destanın yazarı kimdir?", ["Ahmet Haşim", "Nâzım Hikmet", "Cahit Sıtkı Tarancı", "Orhan Veli Kanık"], 1, ""],
+  [6, "Aşk-ı Memnu romanının yazarı kimdir?", ["Recaizade Mahmud Ekrem", "Ahmet Mithat Efendi", "Halit Ziya Uşaklıgil", "Hüseyin Rahmi Gürpınar"], 2, ""],
+
+  /* Yeni kategori: 7 Atasözleri ve Deyimler */
+  [7, "“Bir elin nesi var, ...” atasözü nasıl tamamlanır?", ["iki elin gücü var", "iki elin sesi var", "iki elin yükü var", "iki elin hesabı var"], 1, ""],
+  [7, "“Ağaç yaşken ...” atasözü nasıl tamamlanır?", ["kurur", "büyür", "eğilir", "kırılır"], 2, ""],
+  [7, "“Sakla samanı, ...” atasözü nasıl tamamlanır?", ["gelir zamanı", "çıkar canı", "bulur sahibi", "olur yemi"], 0, ""],
+  [7, "“Sabreden derviş ...” atasözü nasıl tamamlanır?", ["her şeye ermiş", "yoluna girmiş", "dünyaya küsmüş", "muradına ermiş"], 3, ""],
+  [7, "“Ne ekersen ...” atasözü nasıl tamamlanır?", ["onu yersin", "onu satarsın", "onu biçersin", "onu bulursun"], 2, ""],
+  [7, "“Komşu komşunun ...” atasözü nasıl tamamlanır?", ["külüne muhtaçtır", "dostuna yardımcıdır", "sırdaşıdır", "gölgesidir"], 0, ""],
+  [7, "“Üzüm üzüme baka baka ...” atasözü nasıl tamamlanır?", ["tatlanır", "büyür", "olgunlaşır", "kararır"], 3, ""],
+  [7, "“Gülü seven ...” atasözü nasıl tamamlanır?", ["bahçesini sular", "dikenine katlanır", "kokusunu özler", "yaprağını toplar"], 1, ""],
+  [7, "“Damlaya damlaya ...” atasözü nasıl tamamlanır?", ["göl olur", "ırmak olur", "deniz olur", "bulut olur"], 0, ""],
+  [7, "“Sütten ağzı yanan ...” atasözü nasıl tamamlanır?", ["sütü soğutarak içer", "çorbayı beklemez", "yoğurdu üfleyerek yer", "ayrana bakmaz"], 2, ""],
+  [7, "“Bir fincan kahvenin ...” atasözü nasıl tamamlanır?", ["bin yıl tadı vardır", "yedi yıl hatırı vardır", "kırk gün sohbeti vardır", "kırk yıl hatırı vardır"], 3, ""],
+  [7, "“Zararın neresinden dönülürse ...” atasözü nasıl tamamlanır?", ["borçtur", "kârdır", "hayırdır", "bedeldir"], 1, ""],
+  [7, "“Ağzı kulaklarına varmak” deyimi ne anlatır?", ["Çok korkmak", "Çok konuşmak", "Çok sevinmek", "Çok yorulmak"], 2, ""],
+  [7, "“Göz atmak” deyimi ne demektir?", ["Hızlıca bakmak", "Dikkatle incelemek", "Gözünü kırpmak", "Gözlem yapmak"], 0, ""],
+  [7, "“Eli açık” olan biri nasıl bir insandır?", ["Cimri", "Cömert", "Tembel", "Beceriksiz"], 1, ""],
+  [7, "“Kırk yılın başı” deyimi ne anlatır?", ["Çok eski bir olay", "Kırk yaşına gelmek", "Her yıl tekrarlanan bir olay", "Çok seyrek olan bir durum"], 3, ""],
+  [7, "“Pireyi deve yapmak” deyimi ne demektir?", ["Küçük bir şeyi büyütmek", "Hayvan beslemek", "Zor bir işi başarmak", "Boşuna beklemek"], 0, ""],
+  [7, "“Ağzında bakla ıslanmamak” deyimi ne demektir?", ["Çok az yemek", "Sessiz kalmak", "Aç kalmak", "Sır saklayamamak"], 3, ""],
+  [7, "“Ateş pahası” olan bir şey nasıl bir şeydir?", ["Çok ucuz", "Çok pahalı", "Çok sıcak", "Çok tehlikeli"], 1, ""],
+  [7, "“Dil dökmek” deyimi ne demektir?", ["Gizli bir şeyi söylemek", "Çok bağırmak", "Yumuşak sözlerle ikna etmeye çalışmak", "Konuşmayı kesmek"], 2, ""],
+
+  /* Yeni kategori: 8 Peygamberler Tarihi */
+  [8, "Büyük tufandan kurtulmak için gemi yapan peygamber kimdir?", ["Hz. Musa", "Hz. Nuh", "Hz. İbrahim", "Hz. Yusuf"], 1, ""],
+  [8, "Ateşe atıldığında ateşin kendisine serin ve selamet olduğu bildirilen peygamber kimdir?", ["Hz. Musa", "Hz. Nuh", "Hz. İbrahim", "Hz. İsa"], 2, ""],
+  [8, "Kardeşleri tarafından kuyuya atılan peygamber kimdir?", ["Hz. Yusuf", "Hz. Yakup", "Hz. Harun", "Hz. Yahya"], 0, ""],
+  [8, "Büyük bir balığın karnında kalan peygamber kimdir?", ["Hz. Eyyub", "Hz. Zekeriyya", "Hz. Salih", "Hz. Yunus"], 3, ""],
+  [8, "Asasıyla Firavun’a karşı mucize gösteren peygamber kimdir?", ["Hz. Davud", "Hz. Süleyman", "Hz. Musa", "Hz. Yusuf"], 2, ""],
+  [8, "Beşikteyken konuştuğu bildirilen peygamber kimdir?", ["Hz. İsa", "Hz. Yahya", "Hz. Musa", "Hz. İbrahim"], 0, ""],
+  [8, "Kuşların dilini bildiği anlatılan peygamber kimdir?", ["Hz. Nuh", "Hz. Eyyub", "Hz. Lut", "Hz. Süleyman"], 3, ""],
+  [8, "Zebur hangi peygambere verilmiştir?", ["Hz. Musa", "Hz. Davud", "Hz. İsa", "Hz. Muhammed"], 1, ""],
+  [8, "Tevrat hangi peygambere verilmiştir?", ["Hz. Musa", "Hz. Davud", "Hz. İsa", "Hz. İbrahim"], 0, ""],
+  [8, "İncil hangi peygambere verilmiştir?", ["Hz. Musa", "Hz. Davud", "Hz. İsa", "Hz. Yahya"], 2, ""],
+  [8, "Hz. Muhammed hangi şehirde doğmuştur?", ["Medine", "Taif", "Kudüs", "Mekke"], 3, ""],
+  [8, "Hz. Muhammed’e ilk vahiy hangi yerde gelmiştir?", ["Sevr Mağarası", "Hira Mağarası", "Uhud Dağı", "Kâbe"], 1, ""],
+  [8, "Hicret, Hz. Muhammed’in hangi şehirden hangi şehre göç etmesidir?", ["Medine’den Mekke’ye", "Mekke’den Taif’e", "Mekke’den Medine’ye", "Medine’den Şam’a"], 2, ""],
+  [8, "Kâbe’nin temellerini oğlu İsmail ile birlikte yükselten peygamber kimdir?", ["Hz. İbrahim", "Hz. Nuh", "Hz. Musa", "Hz. Süleyman"], 0, ""],
+  [8, "İslam inancına göre ilk peygamber kimdir?", ["Hz. Nuh", "Hz. Âdem", "Hz. İbrahim", "Hz. İdris"], 1, ""],
+  [8, "Sabrıyla örnek gösterilen ve uzun süre hastalıkla sınanan peygamber kimdir?", ["Hz. Yunus", "Hz. Salih", "Hz. Lut", "Hz. Eyyub"], 3, ""],
+  [8, "Hz. Musa’nın kardeşi ve yardımcısı olan peygamber kimdir?", ["Hz. Harun", "Hz. Yahya", "Hz. İsmail", "Hz. Yakup"], 0, ""],
+  [8, "Hz. Yusuf’un babası olan peygamber kimdir?", ["Hz. İshak", "Hz. İsmail", "Hz. İbrahim", "Hz. Yakup"], 3, ""],
+  [8, "Hz. İsa’nın annesi kimdir?", ["Hz. Hacer", "Hz. Meryem", "Hz. Sâre", "Hz. Âsiye"], 1, ""],
+  [8, "Hz. Salih’in kavmine mucize olarak gönderilen hayvan hangisidir?", ["Koç", "Öküz", "Deve", "Kurt"], 2, ""],
 ];
 
 </script>
@@ -876,14 +945,17 @@ const QUESTIONS = [
 (function () {
   "use strict";
 
-  var CATS = ["Tarih", "Coğrafya", "Bilim", "Kültür ve Sanat", "Spor", "Doğa"];
+  var CATS = ["Tarih", "Coğrafya", "Bilim", "Kültür ve Sanat", "Spor", "Doğa", "Edebiyat", "Atasözleri ve Deyimler", "Peygamberler Tarihi"];
   var TOPICS = [
     ["Selçuklular", "Osmanlı’nın kuruluş ve yükseliş dönemi", "Osmanlı’nın son dönemi", "Kurtuluş Savaşı", "Cumhuriyet’in ilk yılları", "Antik Yunan", "Roma İmparatorluğu", "Eski Mısır", "Mezopotamya ve Anadolu uygarlıkları", "Orta Çağ Avrupası", "Büyük keşifler", "Fransız Devrimi ve Napolyon", "Birinci Dünya Savaşı", "İkinci Dünya Savaşı", "Soğuk Savaş", "Çin ve Uzak Doğu tarihi", "Ünlü hükümdarlar ve komutanlar", "Eski Türk devletleri"],
     ["Türkiye’nin dağları ve nehirleri", "Türkiye’nin gölleri ve ovaları", "Türkiye’nin illeri ve bölgeleri", "Avrupa ülkeleri ve başkentleri", "Asya ülkeleri", "Afrika", "Amerika kıtaları", "Okyanuslar ve denizler", "Çöller ve ormanlar", "Adalar", "Dağlar ve volkanlar", "Nehirler ve şelaleler", "Sınırlar ve bayraklar", "İklim ve yer şekilleri", "Ünlü şehirler"],
     ["Gök bilimi ve uzay", "Fizik", "Kimya ve elementler", "İnsan vücudu", "Genetik", "İcatlar ve teknoloji", "Matematik", "Ünlü bilim insanları", "Enerji ve elektrik", "Tıp tarihi", "Jeoloji", "Bilgisayar ve internetin tarihi"],
-    ["Türk edebiyatı", "Dünya edebiyatı", "Resim ve ressamlar", "Klasik müzik", "Türk halk müziği ve sanat müziği", "Sinema tarihi", "Tiyatro", "Mimari ve ünlü yapılar", "Mitoloji ve efsaneler", "Türk el sanatları ve gelenekleri", "Heykel", "Şairler ve şiir akımları", "Dünya mutfağı ve gelenekler"],
+    ["Resim ve ressamlar", "Klasik müzik", "Türk halk müziği ve sanat müziği", "Sinema tarihi", "Tiyatro", "Mimari ve ünlü yapılar", "Mitoloji ve efsaneler", "Türk el sanatları ve gelenekleri", "Heykel", "Dünya mutfağı ve gelenekler", "Ünlü filmler ve yönetmenler", "Dans ve opera"],
     ["Futbolun tarihi", "Olimpiyatlar", "Basketbol", "Voleybol", "Tenis", "Atletizm", "Güreş ve dövüş sporları", "Kış sporları", "Satranç", "Spor kuralları ve ekipmanlar", "Tarihe geçmiş ünlü sporcular", "Motor sporları"],
-    ["Memeliler", "Kuşlar", "Deniz canlıları", "Böcekler", "Sürüngenler ve kurbağalar", "Bitkiler ve ağaçlar", "Türkiye’nin doğası ve hayvanları", "Ekosistemler ve ormanlar", "Nesli tehlike altındaki türler", "Hayvan davranışları ve göçler", "Dinozorlar ve fosiller", "Mantarlar ve mikroorganizmalar"]
+    ["Memeliler", "Kuşlar", "Deniz canlıları", "Böcekler", "Sürüngenler ve kurbağalar", "Bitkiler ve ağaçlar", "Türkiye’nin doğası ve hayvanları", "Ekosistemler ve ormanlar", "Nesli tehlike altındaki türler", "Hayvan davranışları ve göçler", "Dinozorlar ve fosiller", "Mantarlar ve mikroorganizmalar"],
+    ["Türk romanı ve ünlü romancılar", "Türk şiiri ve şairler", "Dünya romanı klasikleri", "Divan ve halk edebiyatı", "Destanlar ve Dede Korkut", "Nobel Edebiyat Ödülü", "Tiyatro ve oyun yazarları", "Hikâye ve öykü yazarları", "Çocuk edebiyatı klasikleri", "Edebiyat akımları", "Ünlü eserler ve yazarları", "Mesnevi ve tasavvuf edebiyatı"],
+    ["Atasözlerini tamamlama", "Deyimlerin anlamları", "Yiyecek ve içecekle ilgili atasözleri", "Hayvanlarla ilgili deyimler", "Vücut bölümleriyle ilgili deyimler", "Doğa ve hava ile ilgili atasözleri", "Zaman ve para ile ilgili atasözleri", "Dostluk ve komşulukla ilgili atasözleri", "Çalışma ve emekle ilgili atasözleri", "Yaygın ikilemeler ve söz kalıpları", "Anlamı karıştırılan deyimler"],
+    ["Hz. Âdem ve Hz. Nuh", "Hz. İbrahim ve ailesi", "Hz. Yusuf kıssası", "Hz. Musa ve Firavun", "Hz. Davud ve Hz. Süleyman", "Hz. İsa ve Hz. Meryem", "Hz. Muhammed’in hayatı: doğum, vahiy, hicret", "Kur’an’da adı geçen peygamberler", "Peygamberlere verilen kitaplar", "Peygamberlerin mucizeleri", "Ashab-ı Kehf gibi Kur’an kıssaları", "Hicret ve ilk Müslümanlar"]
   ];
   var LEVELS = ["kolay", "orta", "orta", "zor"];
   var LETTERS = ["A", "B", "C", "D"];

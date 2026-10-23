@@ -7,12 +7,12 @@
 //   node birlestir.mjs --say       sorular.json içinde kaç soru olduğunu kategorilere göre yazar
 //
 // yeni.json biçimi: [{"k":0,"q":"Soru metni?","o":["A","B","C","D"],"a":2}, ...]
-//   k: kategori numarası (0 Tarih, 1 Coğrafya, 2 Bilim, 3 Kültür ve Sanat, 4 Spor, 5 Doğa)
+//   k: kategori numarası (0 Tarih, 1 Coğrafya, 2 Bilim, 3 Kültür ve Sanat, 4 Spor, 5 Doğa, 6 Edebiyat, 7 Atasözleri ve Deyimler, 8 Peygamberler Tarihi)
 //   a: doğru şıkkın sırası (0-3). Şıkların sırası eklenirken karıştırılır, bu yüzden a değerini ham haliyle yazın.
 import fs from "node:fs";
 import crypto from "node:crypto";
 
-const CATS = ["Tarih", "Coğrafya", "Bilim", "Kültür ve Sanat", "Spor", "Doğa"];
+const CATS = ["Tarih", "Coğrafya", "Bilim", "Kültür ve Sanat", "Spor", "Doğa", "Edebiyat", "Atasözleri ve Deyimler", "Peygamberler Tarihi"];
 const FILE = process.env.OUT_FILE || "sorular.json";
 const MAX_ITEMS = Math.max(50, Number(process.env.MAX_ITEMS || 800));
 
@@ -37,7 +37,7 @@ function similarW(a, b, limit) {
 function check(it) {
   if (!it || typeof it !== "object") return { why: "soru nesnesi değil" };
   const k = Number(it.k), a = Number(it.a);
-  if (!Number.isInteger(k) || k < 0 || k >= CATS.length) return { why: "kategori numarası 0-5 olmalı" };
+  if (!Number.isInteger(k) || k < 0 || k >= CATS.length) return { why: "kategori numarası 0-8 olmalı" };
   if (!Number.isInteger(a) || a < 0 || a > 3) return { why: "doğru şık sırası 0-3 olmalı" };
   if (typeof it.q !== "string" || !Array.isArray(it.o) || it.o.length !== 4) return { why: "q metin, o tam 4 şık olmalı" };
   const fix = (x) => String(x == null ? "" : x).replace(/\s+/g, " ").replace(/'/g, "\u2019").trim();
