@@ -3791,9 +3791,32 @@ const QUESTIONS = [
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
+  /* Claude içinde açılan sayfada doğrudan dosya indirme kapalıdır; orada resim Claude'un "downloads" izniyle kaydettirilir
+     (telefonda paylaşma menüsü açılır, oyuncu onaylar). Claude dışında window.claude yoktur ve bu yol hiç kullanılmaz.
+     Sonuç: "saved" (kaydedildi), "declined" (oyuncu vazgeçti), "none" (bu yol kullanılamıyor) ya da null (Claude içinde değiliz). */
+  function claudeSave(blob, name) {
+    try {
+      if (!window.claude || typeof window.claude.use !== "function") return null;
+      return window.claude.use("downloads").then(function (dl) {
+        if (!dl || typeof dl.save !== "function") return "none";
+        return dl.save({ filename: name, data: blob }).then(function () { return "saved"; }, function (e) {
+          return e && e.code === "declined" ? "declined" : "none";
+        });
+      }, function () { return "none"; });
+    } catch (e) { return null; }
+  }
   function deliverCard(blob, status, btn) {
     var done = function (msg) { btn.disabled = false; status.textContent = msg || ""; };
-    var saved = function () { saveBlob(blob, "sir-bende.png"); done("Kart resmi indirildi. Galerinden arkadaşına gönderebilirsin."); };
+    var plain = function () { saveBlob(blob, "sir-bende.png"); done("Kart resmi indirildi. Galerinden arkadaşına gönderebilirsin."); };
+    var saved = function () {
+      var cp = claudeSave(blob, "sir-bende.png");
+      if (!cp) { plain(); return; }
+      cp.then(function (r) {
+        if (r === "saved") done("Kart resmi hazır. Kaydedip arkadaşına gönderebilirsin.");
+        else if (r === "declined") done("");
+        else plain();
+      });
+    };
     var c = invitePartsFor(endScore, false, endQ, endDaily);
     var file = null;
     try { file = new File([blob], "sir-bende.png", { type: "image/png" }); } catch (e) {}
