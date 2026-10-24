@@ -399,6 +399,12 @@ a.btn { text-align: center; text-decoration: none; }
 .pending.challenge-box { border: 2px solid var(--action); font-weight: 600; margin: 4px 0 20px; flex-direction: column; align-items: stretch; gap: 12px; }
 .challenge-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .challenge-btns[hidden] { display: none; }
+.daily { display: grid; gap: 10px; padding: 14px; margin: 0 0 20px; background: var(--surface); border: 2px solid var(--line); border-radius: 12px; }
+.daily[hidden] { display: none; }
+.daily-info { margin: 4px 0 0; color: var(--ink-2); font-size: 0.9375rem; }
+.daily-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.daily-btns .btn[hidden] { display: none; }
+.daily .invite-status { margin-top: 0; }
 .challenge-result { margin: 4px 0 14px; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); font-weight: 600; }
 .invite-status { margin-top: 6px; color: var(--ink-2); font-size: 0.875rem; }
 .invite-status:empty { display: none; }
@@ -510,6 +516,17 @@ a.btn { text-align: center; text-decoration: none; }
     <div class="pending notice" id="noticeBox" hidden>
       <span>Adın, yaşın, yerin, puanın ve oynama zamanın yapımcı tarafından kaydedilir.</span>
       <button class="btn" id="noticeOk" type="button">Tamam</button>
+    </div>
+    <div class="daily" id="dailyBox" hidden>
+      <div>
+        <span class="lbl">Günün Yarışması</span>
+        <p class="daily-info" id="dailyInfo"></p>
+      </div>
+      <div class="daily-btns">
+        <button class="btn small" id="dailyGo" type="button">Bugünün yarışmasına gir</button>
+        <button class="btn small ghost" id="dailyShare" type="button" hidden>Sonucumu paylaş</button>
+      </div>
+      <p class="invite-status" id="dailyStatus" aria-live="polite"></p>
     </div>
 
     <fieldset class="field">
@@ -713,6 +730,7 @@ a.btn { text-align: center; text-decoration: none; }
     <span class="lbl">Toplam puan</span>
     <p class="final" id="final">0</p>
     <p class="new-best" id="newBest" hidden>Yeni rekor!</p>
+    <p class="challenge-result" id="dailyResult" hidden></p>
     <p class="challenge-result" id="challengeResult" hidden></p>
     <dl class="facts">
       <div><dt>Doğru cevap</dt><dd id="fCorrect"></dd></div>
@@ -977,7 +995,7 @@ const QUESTIONS = [
   var ROUND = 10;
   var BASE_TIME = 20;
   var lastSecs = -1; /* son çalınan tik-tak saniyesi */
-  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox", challenge: "sirbende:challenge", remind: "sirbende:remind", bestq: "sirbende:bestq" };
+  var KEYS = { best: "sirbende:best", seen: "sirbende:seen", gseen: "sirbende:gseen", recent: "sirbende:recent", vseen: "sirbende:vseen", pool: "sirbende:pool", ai: "sirbende:ai", profiles: "sirbende:profiles", active: "sirbende:active", music: "sirbende:music", outbox: "sirbende:outbox", challenge: "sirbende:challenge", remind: "sirbende:remind", bestq: "sirbende:bestq", daily: "sirbende:daily" };
   var PERMANENT = { not_granted: 1, sampling_disabled: 1, not_declared: 1, capability_disabled: 1, capability_removed: 1 };
   var RANKS = [
     [9, "Sırların Efendisi", "Hiçbir sır senden saklanamıyor."],
@@ -2366,6 +2384,7 @@ const QUESTIONS = [
     $("pending").hidden = !(me && needsSend(me));
     $("noticeBox").hidden = !(me && needsNotice(me));
     renderChallenge();
+    renderDaily();
     renderRemind();
     renderInstall();
     syncFlush();
@@ -3142,7 +3161,21 @@ const QUESTIONS = [
     $("newBest").hidden = !(isBest && st.score > 0);
     endScore = st.score;
     endQ = shareableIds(st.log);
+    endDaily = !!(st.daily && endQ);
     if (isBest && st.score > 0) setJSON(KEYS.bestq, endQ ? { u: me ? me.id : "", p: st.score, q: endQ } : null);
+    /* Günün Yarışması: ilk bitiren sonuç sayılır, seri dün de oynandıysa uzar */
+    var dr = $("dailyResult");
+    dr.hidden = true;
+    if (st.daily && me && n > 0) {
+      var prevRec = dailyRec();
+      if (!(prevRec && prevRec.d === st.daily)) {
+        var dstr = prevRec && prevRec.d === dayKey(st.dailyN - 1) ? prevRec.str + 1 : 1;
+        dailySave({ d: st.daily, p: st.score, c: st.correct, n: n, str: dstr });
+        dr.textContent = "Günün Yarışması tamam: " + fmt(st.score) + " puan." +
+          (dstr > 1 ? " " + dstr + " gündür üst üste oynuyorsun." : " Yarın da gel, yeni 10 soru seni bekliyor.");
+        dr.hidden = false;
+      }
+    }
     var cr = $("challengeResult");
     /* Soru kimlikli (aynı sorular) meydan okuma yalnızca "Meydan okumayı kabul et" ile açılan oyunla karşılaştırılır */
     if (challenge && n > 0 && (!challenge.q || st.vs === challenge)) {
@@ -3254,6 +3287,7 @@ const QUESTIONS = [
   var SHARE_URL = "https://sirbende-oyun.github.io/sirbende/";
   var challenge = null;
   var endScore = 0;
+  var endDaily = false; /* biten oyun Günün Yarışması mıydı (paylaşım metni buna göre) */
   var endQ = null; /* biten oyunun soru kimlikleri (arkadaşın aynı soruları oynayabilmesi için), paylaşılamıyorsa null */
   /* Soru kimlikleri: tam ROUND tane, her biri hash(q) biçiminde kısa bir yazı (0-9, a-z, en çok 7 karakter), tekrarsız */
   function validIds(a) {
@@ -3411,14 +3445,117 @@ const QUESTIONS = [
       if (l2) playSeeded(ch, l2); else fallback();
     }, fallback);
   }
-  function invitePartsFor(score, isBest, ids) {
+  /* == GÜNÜN YARIŞMASI ==
+     Her gün herkese aynı 10 soru gelir. Sunucu yoktur: sorular tarihten (Türkiye saatiyle gün numarası) hesaplanır, bu yüzden aynı gün
+     her telefonda aynı çıkar. Havuz, hazır soruların ilk DAILY_POOL tanesidir (sonradan eklenen sorular günün sorularını kaydırmasın diye
+     sabit tutulur; havuzu büyütmek, o günden sonraki soruları değiştirir). Havuz karıştırılıp 10'arlık dilimlere bölünür, bir tur bitmeden
+     aynı soru tekrar gelmez. Skor günde bir kez sayılır ve yalnızca bu cihazda saklanır. Arkadaşa giden bağlantı, mevcut soru kimlikli
+     meydan okuma bağlantısıdır. */
+  var DAILY_POOL = 180;
+  var TR_OFFSET = 3 * 3600 * 1000;
+  function dayNum(ms) { return Math.floor((ms + TR_OFFSET) / 86400000); }
+  function dayKey(n) { return new Date(n * 86400000).toISOString().slice(0, 10); }
+  function seedOf(s) {
+    var h = 5381;
+    for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+    return h >>> 0;
+  }
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function dailyIds(n) {
+    var pool = BANK.slice(0, DAILY_POOL);
+    var per = Math.floor(pool.length / ROUND);
+    if (per < 1) return null;
+    var cycle = Math.floor(n / per), pos = ((n % per) + per) % per;
+    var rnd = rng(seedOf("sirbende-gunun-" + cycle));
+    var order = pool.map(function (b, i) { return i; });
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(rnd() * (i + 1));
+      var t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    return validIds(order.slice(pos * ROUND, pos * ROUND + ROUND).map(function (k) { return pool[k].id; }));
+  }
+  /* Bu oyuncunun kayıtlı son günlük sonucu: { d: "2026-10-23", p: puan, c: doğru, n: soru, str: üst üste gün } ya da null */
+  function dailyRec() {
+    if (!me) return null;
+    var all = getJSON(KEYS.daily, null), r = all && typeof all === "object" && !Array.isArray(all) ? all[me.id] : null;
+    if (!r || typeof r !== "object" || typeof r.d !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.d)) return null;
+    var okn = function (v, lo, hi) { return typeof v === "number" && Math.floor(v) === v && v >= lo && v <= hi; };
+    if (!(okn(r.p, 0, 99999) && okn(r.c, 0, ROUND) && okn(r.n, 1, ROUND) && okn(r.str, 1, 100000))) return null;
+    return r;
+  }
+  function dailySave(rec) {
+    if (!me) return;
+    var all = getJSON(KEYS.daily, null);
+    if (!all || typeof all !== "object" || Array.isArray(all)) all = {};
+    all[me.id] = rec;
+    setJSON(KEYS.daily, all);
+  }
+  /* Bugün itibarıyla süren seri: bugün ya da dün oynadıysa kayıtlı sayı, yoksa 0 */
+  function dailyStreak(rec, n) {
+    if (!rec) return 0;
+    return rec.d === dayKey(n) || rec.d === dayKey(n - 1) ? rec.str : 0;
+  }
+  function renderDaily() {
+    var box = $("dailyBox");
+    box.hidden = !me;
+    if (!me) return;
+    var n = dayNum(Date.now()), rec = dailyRec();
+    var played = !!(rec && rec.d === dayKey(n));
+    var str = dailyStreak(rec, n);
+    var info;
+    if (played) {
+      info = "Bugünkü puanın " + fmt(rec.p) + " (" + rec.c + "/" + rec.n + " doğru)." +
+        (rec.str > 1 ? " " + rec.str + " gündür üst üste oynuyorsun." : "") + " Yarın yeni 10 soru gelecek.";
+    } else {
+      info = "Bugün herkes aynı 10 soruyu oynuyor. Günde bir kez sayılır." +
+        (str > 0 ? " " + str + " gündür üst üste oynuyorsun, bugün de oyna ki seri bozulmasın." : "");
+    }
+    $("dailyInfo").textContent = info;
+    $("dailyGo").hidden = played;
+    $("dailyShare").hidden = !played;
+    $("dailyStatus").textContent = "";
+  }
+  function startDaily() {
+    if (!me) { enterApp(); return; }
+    var n = dayNum(Date.now()), rec = dailyRec();
+    if (rec && rec.d === dayKey(n)) { renderDaily(); return; }
+    var ids = dailyIds(n), list = ids ? resolveIds(ids, null) : null;
+    if (!list) { start(); return; }
+    notePlay();
+    abortGen();
+    st = newState(-1, "bank");
+    st.list = list.slice();
+    list.forEach(function (q) { st.ids[q.id] = 1; });
+    st.daily = dayKey(n);
+    st.dailyN = n;
+    st.started = true;
+    show("game");
+    render();
+  }
+  function shareDaily() {
+    var n = dayNum(Date.now()), rec = dailyRec();
+    if (!(rec && rec.d === dayKey(n))) { renderDaily(); return; }
+    var c = invitePartsFor(rec.p, false, dailyIds(n), true);
+    doShare(c.text, c.url, $("dailyStatus"));
+  }
+  function invitePartsFor(score, isBest, ids, daily) {
     var ad = me ? cleanName(me.ad) : "";
     if (!ad) ad = "Bir arkadaşın";
     if (score > 0) {
       var q = validIds(ids);
       return {
         text: q
-          ? (isBest
+          ? (daily
+            ? "Sır Bende Günün Yarışması’nda " + fmt(score) + " puan yaptım. Aynı 10 soruyu oynayıp beni geçebilir misin?"
+            : isBest
             ? "Sır Bende’de en yüksek puanım " + fmt(score) + ". Aynı soruları oynayıp beni geçebilir misin?"
             : "Sır Bende’de " + fmt(score) + " puan yaptım. Aynı soruları oynayıp beni geçebilir misin?")
           : (isBest
@@ -3657,7 +3794,7 @@ const QUESTIONS = [
   function deliverCard(blob, status, btn) {
     var done = function (msg) { btn.disabled = false; status.textContent = msg || ""; };
     var saved = function () { saveBlob(blob, "sir-bende.png"); done("Kart resmi indirildi. Galerinden arkadaşına gönderebilirsin."); };
-    var c = invitePartsFor(endScore, false, endQ);
+    var c = invitePartsFor(endScore, false, endQ, endDaily);
     var file = null;
     try { file = new File([blob], "sir-bende.png", { type: "image/png" }); } catch (e) {}
     if (file && typeof navigator.share === "function" && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
@@ -3857,9 +3994,11 @@ const QUESTIONS = [
   $("installBtn").addEventListener("click", onInstall);
   $("installClose").addEventListener("click", function () { $("installHelp").hidden = true; });
   $("challengeBtn").addEventListener("click", function () {
-    var c = invitePartsFor(endScore, false, endQ);
+    var c = invitePartsFor(endScore, false, endQ, endDaily);
     doShare(c.text, c.url, $("copyStatus"));
   });
+  $("dailyGo").addEventListener("click", startDaily);
+  $("dailyShare").addEventListener("click", shareDaily);
   $("challengeGo").addEventListener("click", startChallenge);
   $("challengeNo").addEventListener("click", dropChallenge);
   $("cardBtn").addEventListener("click", shareCard);
